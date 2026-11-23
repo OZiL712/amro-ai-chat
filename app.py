@@ -1760,10 +1760,13 @@ def add_security_headers(response):
     return response
 
 @app.route("/")
+@app.route("/api")
+@app.route("/api/index.py")
 def home():
     return render_template_string(HTML_TEMPLATE)
 
 @app.route("/chat/stream", methods=["POST"])
+@app.route("/api/chat/stream", methods=["POST"])
 def chat_stream():
     client_ip = get_client_ip()
     allowed, retry_after = rate_limiter.is_allowed(client_ip)
@@ -1859,6 +1862,7 @@ def chat_stream():
     )
 
 @app.route("/chat", methods=["POST"])
+@app.route("/api/chat", methods=["POST"])
 def chat_legacy():
     client_ip = get_client_ip()
     allowed, retry_after = rate_limiter.is_allowed(client_ip)
