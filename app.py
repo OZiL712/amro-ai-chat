@@ -24,10 +24,10 @@ class ThreadSafeRateLimiter:
     """
     نظام تحديد معدل الطلبات (Rate Limiter) متقدم وخفيف ومبني في الذاكرة:
     - يحدد عدد الطلبات لكل عنوان IP خلال نافذة زمنية مدتها دقيقة.
-    - يحتوي على حماية من الطلبات المتتالية السريعة (Burst Limit).
+    - حماية من تدفق الطلبات المتتالية السريعة (Burst Limit).
     - آمن لتعدد الخيوط (Thread-Safe).
     """
-    def __init__(self, requests_per_minute=25, burst_limit=6, burst_window=10):
+    def __init__(self, requests_per_minute=30, burst_limit=8, burst_window=10):
         self.rpm = requests_per_minute
         self.burst_limit = burst_limit
         self.burst_window = burst_window
@@ -37,16 +37,13 @@ class ThreadSafeRateLimiter:
     def is_allowed(self, ip: str):
         now = time.time()
         with self.lock:
-            # تنظيف الطلبات الأقدم من 60 ثانية
             self.requests[ip] = [t for t in self.requests[ip] if now - t < 60]
 
-            # فحص تدفق الطلبات السريع (Burst)
             burst_reqs = [t for t in self.requests[ip] if now - t < self.burst_window]
             if len(burst_reqs) >= self.burst_limit:
                 retry_after = int(self.burst_window - (now - burst_reqs[0])) + 1
                 return False, max(1, retry_after)
 
-            # فحص إجمالي الطلبات في الدقيقة
             if len(self.requests[ip]) >= self.rpm:
                 retry_after = int(60 - (now - self.requests[ip][0])) + 1
                 return False, max(1, retry_after)
@@ -54,7 +51,7 @@ class ThreadSafeRateLimiter:
             self.requests[ip].append(now)
             return True, 0
 
-rate_limiter = ThreadSafeRateLimiter(requests_per_minute=30, burst_limit=8, burst_window=10)
+rate_limiter = ThreadSafeRateLimiter(requests_per_minute=35, burst_limit=10, burst_window=10)
 
 def get_client_ip():
     """استخراج عنوان IP الحقيقي حتى مع وجود خوادم وسيطة (Proxies / CDN)"""
@@ -75,7 +72,6 @@ def get_api_key():
 # ==========================================
 # 2. نماذج الذكاء الاصطناعي وتعليمات النظام
 # ==========================================
-# قائمة بنماذج Gemini النشطة والمستقرة، مرتبة حسب الأولوية والسرعة
 PRIMARY_MODELS = [
     "gemini-3-flash-preview",
     "gemini-3.5-flash",
@@ -97,9 +93,9 @@ SYSTEM_INSTRUCTION_TEXT = (
 # 3. التحقق من المدخلات وتطهيرها (Sanitization)
 # ==========================================
 def validate_and_sanitize_payload(data):
-    """التحقق من سلامة البيانات المرسلة وتطهيرها لحماية الخادم وقاعدة البيانات"""
+    """التحقق من سلامة البيانات المرسلة وتطهيرها لحماية الخادم"""
     if not isinstance(data, dict):
-        return None, "صيغة الطلب غير صالحة، يجب إرسال كائن JSON."
+        return None, "صيغة الطلب غير صالحة."
 
     question = data.get("question", "")
     if not isinstance(question, str):
@@ -109,7 +105,6 @@ def validate_and_sanitize_payload(data):
     if not question:
         return None, "يرجى كتابة سؤال قبل الإرسال."
 
-    # تقييد حجم الإدخال لحماية الخادم من هجمات حجب الخدمة (DoS)
     if len(question) > 5000:
         return None, "نص السؤال طويل جداً (الحد الأقصى 5000 حرف)."
 
@@ -118,7 +113,6 @@ def validate_and_sanitize_payload(data):
         raw_history = []
 
     clean_history = []
-    # الاكتفاء بآخر 20 رسالة للحفاظ على توازن التوكن وسرعة الاستجابة
     for msg in raw_history[-20:]:
         if not isinstance(msg, dict):
             continue
@@ -134,7 +128,6 @@ def validate_and_sanitize_payload(data):
         text = first_part.get("text", "")
         if not isinstance(text, str) or not text.strip():
             continue
-        # تقييد طول الرسائل السابقة لمنع تضخم السياق
         clean_history.append({
             "role": role,
             "parts": [{"text": text[:4000]}]
@@ -143,7 +136,7 @@ def validate_and_sanitize_payload(data):
     return (question, clean_history), None
 
 # ==========================================
-# 4. الواجهة الأمامية المتقدمة (Responsive UI)
+# 4. الواجهة الأمامية المتجاوبة والخفيفة
 # ==========================================
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -152,16 +145,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Amro AI CHAT ✨ | المساعد الذكي</title>
   
-  <!-- خط Cairo الأنيق -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   
-  <!-- مكتبة تلوين الأكواد البرمجية Highlight.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
-  <!-- مكتبة تحويل الـ Markdown (Marked.js) ومكتبة التطهير ضد XSS (DOMPurify) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 
@@ -171,18 +160,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       --primary-hover: #1e40af;
       --primary-light: #eff6ff;
       --primary-border: #bfdbfe;
-      --accent: #0ea5e9;
-      --bg-main: #f1f5f9;
+      --bg-main: #f8fafc;
       --bg-card: #ffffff;
       --text-main: #0f172a;
       --text-muted: #64748b;
       --border-color: #e2e8f0;
-      --bot-msg-bg: #ffffff;
-      --user-msg-bg: #2563eb;
-      --user-msg-text: #ffffff;
-      --sidebar-width: 310px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-      --shadow-md: 0 4px 14px rgba(0,0,0,0.08);
+      --sidebar-width: 300px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 14px rgba(0,0,0,0.07);
       --radius-lg: 16px;
       --radius-md: 12px;
       --radius-sm: 8px;
@@ -206,7 +191,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     /* ============================================================
-       الشريط الجانبي: دفتر الملاحظات المطور (Notes Sidebar)
+       الشريط الجانبي (Sidebar)
     ============================================================ */
     .sidebar {
       width: var(--sidebar-width);
@@ -221,7 +206,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .sidebar-header {
-      padding: 16px 18px;
+      padding: 14px 16px;
       background: #f8fafc;
       border-bottom: 1px solid var(--border-color);
       display: flex;
@@ -230,19 +215,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .sidebar-header h2 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       color: #0f172a;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .sidebar-header h2 .badge {
       background: #e2e8f0;
       color: #475569;
       font-size: 11px;
-      padding: 2px 8px;
+      padding: 2px 7px;
       border-radius: 12px;
       font-weight: 700;
     }
@@ -251,17 +236,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: none;
       background: none;
       border: none;
-      font-size: 20px;
+      font-size: 18px;
       color: var(--text-muted);
       cursor: pointer;
       padding: 4px;
       border-radius: 6px;
-      transition: 0.2s;
     }
     .close-sidebar-btn:hover { background: #e2e8f0; color: #0f172a; }
 
     .sidebar-actions {
-      padding: 12px 14px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -275,21 +259,64 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       justify-content: center;
       gap: 8px;
       width: 100%;
-      padding: 10px 14px;
+      padding: 9px 12px;
       background: linear-gradient(135deg, #1d4ed8, #2563eb);
       color: #ffffff;
       border: none;
       border-radius: var(--radius-md);
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+      box-shadow: 0 2px 6px rgba(37,99,235,0.2);
     }
     .new-chat-btn:hover {
       background: linear-gradient(135deg, #1e40af, #1d4ed8);
+    }
+
+    /* زر المطور في القائمة الجانبية بأيقونة </> */
+    .sidebar-dev-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: right;
+    }
+    .sidebar-dev-btn:hover {
+      background: #dbeafe;
+      border-color: #93c5fd;
       transform: translateY(-1px);
-      box-shadow: 0 4px 10px rgba(37,99,235,0.3);
+    }
+    .sidebar-dev-btn .dev-code-icon {
+      background: #1d4ed8;
+      color: #ffffff;
+      font-family: monospace;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: -1px;
+    }
+    .sidebar-dev-btn .dev-btn-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-dev-btn .dev-main-title {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+    .sidebar-dev-btn .dev-sub-title {
+      font-size: 11px;
+      color: #2563eb;
+      font-weight: 600;
     }
 
     .search-box {
@@ -298,14 +325,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     .search-box input {
       width: 100%;
-      padding: 8px 34px 8px 12px;
-      font-size: 13px;
+      padding: 7px 32px 7px 10px;
+      font-size: 12.5px;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       background: #f8fafc;
       color: var(--text-main);
       outline: none;
-      transition: border-color 0.2s;
     }
     .search-box input:focus {
       border-color: var(--primary);
@@ -316,7 +342,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-muted);
       pointer-events: none;
     }
@@ -324,58 +350,52 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .notes-list {
       flex: 1;
       overflow-y: auto;
-      padding: 10px 12px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 7px;
     }
 
     .empty-notes {
       text-align: center;
       color: var(--text-muted);
-      font-size: 13px;
-      margin: 40px 10px;
-      line-height: 1.7;
+      font-size: 12.5px;
+      margin: 30px 10px;
+      line-height: 1.6;
     }
 
     .note-card {
       background: #f8fafc;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      padding: 10px 12px;
+      padding: 8px 10px;
       cursor: pointer;
       transition: all 0.2s ease;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      position: relative;
+      gap: 5px;
     }
     .note-card:hover {
       border-color: #93c5fd;
       background: #eff6ff;
-      transform: translateY(-1px);
     }
     .note-card.active {
       border-color: var(--primary);
       background: #e0f2fe;
-      box-shadow: 0 2px 8px rgba(14,165,233,0.15);
     }
     .note-card.pinned {
-      border-right: 4px solid #f59e0b;
+      border-right: 3px solid #f59e0b;
       background: #fffbeb;
-    }
-    .note-card.pinned:hover {
-      background: #fef3c7;
     }
 
     .note-card-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
     .note-title {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       color: var(--text-main);
       white-space: nowrap;
@@ -386,9 +406,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .note-card-actions {
       display: flex;
       align-items: center;
-      gap: 4px;
-      opacity: 0.6;
-      transition: opacity 0.2s;
+      gap: 3px;
+      opacity: 0.7;
     }
     .note-card:hover .note-card-actions { opacity: 1; }
     
@@ -397,55 +416,46 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border: none;
       color: #64748b;
       cursor: pointer;
-      font-size: 12px;
-      padding: 3px 5px;
+      font-size: 11px;
+      padding: 2px 4px;
       border-radius: 4px;
-      transition: all 0.15s;
     }
-    .note-action-btn:hover {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
-    .note-action-btn.delete-btn:hover {
-      background: #fee2e2;
-      color: #dc2626;
-    }
-    .note-action-btn.pin-btn.is-pinned {
-      color: #d97706;
-    }
+    .note-action-btn:hover { background: #e2e8f0; color: #0f172a; }
+    .note-action-btn.delete-btn:hover { background: #fee2e2; color: #dc2626; }
+    .note-action-btn.pin-btn.is-pinned { color: #d97706; }
 
     .note-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10.5px;
+      color: var(--text-muted);
+    }
+
+    .sidebar-footer {
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 11px;
       color: var(--text-muted);
     }
-
-    .sidebar-footer {
-      padding: 12px 14px;
-      background: #f8fafc;
-      border-top: 1px solid var(--border-color);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11.5px;
-      color: var(--text-muted);
-    }
     .clear-all-notes-btn {
       background: none;
       border: none;
       color: #dc2626;
-      font-size: 11.5px;
+      font-size: 11px;
       cursor: pointer;
       font-weight: 600;
-      padding: 2px 6px;
+      padding: 2px 5px;
       border-radius: 4px;
     }
     .clear-all-notes-btn:hover { background: #fee2e2; }
 
     /* ============================================================
-       منطقة العمل الرئيسية (Main Chat View)
+       منطقة المحادثة الرئيسية (Main Chat View)
     ============================================================ */
     .main-wrapper {
       flex: 1;
@@ -460,18 +470,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     header {
       background: #ffffff;
       border-bottom: 1px solid var(--border-color);
-      padding: 10px 20px;
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       box-shadow: var(--shadow-sm);
       z-index: 10;
+      gap: 8px;
     }
 
-    .header-left, .header-right {
+    .header-right, .header-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .menu-toggle-btn {
@@ -479,71 +490,39 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #1e293b;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      padding: 7px 12px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-    .menu-toggle-btn:hover {
-      background: #e2e8f0;
-      border-color: #cbd5e1;
-    }
-
-    .brand-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .brand-title h1 {
-      font-size: 18px;
-      font-weight: 800;
-      color: #1e3a8a;
-      letter-spacing: -0.3px;
-    }
-    .brand-title .model-pill {
-      background: #e0f2fe;
-      color: #0369a1;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 20px;
-      border: 1px solid #bae6fd;
-    }
-
-    .dev-profile-btn {
-      background: linear-gradient(135deg, #eff6ff, #dbeafe);
-      color: #1d4ed8;
-      border: 1px solid #bfdbfe;
-      border-radius: 20px;
-      padding: 5px 12px;
-      font-size: 12px;
+      padding: 6px 10px;
+      font-size: 12.5px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 5px;
-      transition: all 0.2s;
     }
-    .dev-profile-btn:hover {
-      background: #bfdbfe;
-      transform: translateY(-1px);
+    .menu-toggle-btn:hover { background: #e2e8f0; }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand-title h1 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #1e3a8a;
     }
 
     .status-badge {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 700;
-      padding: 5px 10px;
-      border-radius: 20px;
+      padding: 4px 9px;
+      border-radius: 16px;
       background: #f1f5f9;
       color: #475569;
       border: 1px solid #e2e8f0;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
+      white-space: nowrap;
     }
     .status-badge.streaming {
       background: #fef3c7;
@@ -556,56 +535,52 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border-color: #a7f3d0;
     }
 
-    /* منطقة الرسائل */
     .chat-container {
       flex: 1;
-      max-width: 900px;
+      max-width: 860px;
       width: 100%;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      padding: 16px;
+      padding: 12px 14px;
       overflow: hidden;
     }
 
     .chat-messages {
       flex: 1;
       overflow-y: auto;
-      padding: 10px 6px 20px 6px;
+      padding: 6px 4px 16px 4px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
       scroll-behavior: smooth;
     }
 
-    /* مظهر الرسائل */
     .msg-wrapper {
       display: flex;
       flex-direction: column;
-      max-width: 86%;
-      animation: fadeIn 0.25s ease-out;
+      max-width: 85%;
+      animation: fadeIn 0.2s ease-out;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     .msg-wrapper.user {
       align-self: flex-start;
-      margin-right: 0;
     }
     .msg-wrapper.bot {
       align-self: flex-end;
-      margin-left: 0;
       width: 100%;
-      max-width: 92%;
+      max-width: 90%;
     }
 
     .msg-bubble {
-      padding: 14px 18px;
-      border-radius: 16px;
-      font-size: 14.5px;
-      line-height: 1.8;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.75;
       position: relative;
       word-break: break-word;
       overflow-wrap: break-word;
@@ -615,7 +590,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: linear-gradient(135deg, #1d4ed8, #2563eb);
       color: #ffffff;
       border-bottom-left-radius: 4px;
-      box-shadow: 0 3px 10px rgba(37,99,235,0.2);
+      box-shadow: 0 2px 8px rgba(37,99,235,0.18);
       font-weight: 600;
     }
 
@@ -624,72 +599,118 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #1e293b;
       border: 1px solid #e2e8f0;
       border-bottom-right-radius: 4px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
     }
 
-    /* تنسيقات Markdown الاحترافية للإجابات */
-    .msg-content {
-      line-height: 1.85;
+    /* بطاقة الترحيب الخفيفة والأنيقة */
+    .welcome-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      line-height: 1.8;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
-    .msg-content p {
-      margin-bottom: 10px;
+    .welcome-card h3 {
+      font-size: 15.5px;
+      color: #1e3a8a;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .msg-content p:last-child {
-      margin-bottom: 0;
+    .welcome-card p {
+      font-size: 13.5px;
+      color: #334155;
+      margin-bottom: 6px;
     }
-    .msg-content h1, .msg-content h2, .msg-content h3, .msg-content h4 {
-      color: #0f172a;
-      margin: 16px 0 8px 0;
-      font-weight: 800;
+    .welcome-card .welcome-hint {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #e2e8f0;
     }
-    .msg-content h1 { font-size: 18px; }
-    .msg-content h2 { font-size: 16.5px; }
-    .msg-content h3 { font-size: 15px; }
-    .msg-content ul, .msg-content ol {
-      margin: 8px 20px 12px;
+
+    /* مؤشر جاري الكتابة مع وميض المؤشر دون إظهار النص حرفاً بحرف */
+    .typing-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      color: #1d4ed8;
+      font-weight: 700;
+      font-size: 13.5px;
     }
-    .msg-content li {
-      margin-bottom: 4px;
+    .typing-dots {
+      display: inline-flex;
+      gap: 3px;
     }
+    .typing-dots span {
+      width: 5px;
+      height: 5px;
+      background: #2563eb;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .typing-dots span:nth-child(1) { animation-delay: 0s; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    .streaming-cursor {
+      display: inline-block;
+      width: 7px;
+      height: 15px;
+      background: #1d4ed8;
+      animation: blink 0.8s infinite;
+      border-radius: 1px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* تنسيقات Markdown */
+    .msg-content { line-height: 1.8; }
+    .msg-content p { margin-bottom: 8px; }
+    .msg-content p:last-child { margin-bottom: 0; }
+    .msg-content h1, .msg-content h2, .msg-content h3 { color: #0f172a; margin: 12px 0 6px 0; font-weight: 800; }
+    .msg-content h1 { font-size: 16.5px; }
+    .msg-content h2 { font-size: 15px; }
+    .msg-content h3 { font-size: 14px; }
+    .msg-content ul, .msg-content ol { margin: 6px 18px 10px; }
+    .msg-content li { margin-bottom: 3px; }
     .msg-content blockquote {
-      border-right: 4px solid var(--primary);
-      padding: 6px 14px;
+      border-right: 3px solid var(--primary);
+      padding: 4px 12px;
       background: #f8fafc;
       color: #475569;
-      margin: 10px 0;
-      border-radius: 0 8px 8px 0;
-      font-style: italic;
+      margin: 8px 0;
+      border-radius: 0 6px 6px 0;
     }
     .msg-content table {
       border-collapse: collapse;
       width: 100%;
-      margin: 12px 0;
-      font-size: 13.5px;
+      margin: 10px 0;
+      font-size: 13px;
       background: #fff;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
     }
     .msg-content th, .msg-content td {
       border: 1px solid #e2e8f0;
-      padding: 8px 12px;
+      padding: 6px 10px;
       text-align: right;
     }
-    .msg-content th {
-      background: #f1f5f9;
-      font-weight: 700;
-      color: #1e293b;
-    }
-    .msg-content a {
-      color: var(--primary);
-      text-decoration: underline;
-    }
+    .msg-content th { background: #f1f5f9; font-weight: 700; }
 
-    /* تصميم كتل الأكواد البرمجية الفاخر */
+    /* كتل الأكواد البرمجية */
     .code-container {
       position: relative;
-      margin: 12px 0;
-      border-radius: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
       overflow: hidden;
       background: #282c34;
       border: 1px solid #3e4451;
@@ -698,52 +719,49 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     .code-header {
       background: #21252b;
-      padding: 6px 14px;
+      padding: 5px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       font-family: monospace;
-      font-size: 12px;
+      font-size: 11px;
       color: #abb2bf;
     }
     .code-copy-btn {
       background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.2);
       color: #e5e7eb;
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 5px;
+      font-size: 10.5px;
+      padding: 2px 7px;
+      border-radius: 4px;
       cursor: pointer;
-      transition: all 0.2s;
       font-family: 'Cairo', sans-serif;
     }
-    .code-copy-btn:hover { background: rgba(255,255,255,0.22); color: #fff; }
+    .code-copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
     .code-copy-btn.copied { background: #166534; color: #bbf7d0; border-color: #22c55e; }
 
     pre code.hljs {
-      padding: 12px 14px;
+      padding: 10px 12px;
       font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 13.5px;
-      line-height: 1.6;
-      border-radius: 0 0 10px 10px;
+      font-size: 13px;
+      line-height: 1.5;
       overflow-x: auto;
     }
 
-    /* شريط أدوات الرسالة السفلية */
+    /* أزرار الرسالة السفلية */
     .msg-toolbar {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       margin-top: 6px;
-      padding: 0 4px;
-      opacity: 0.85;
+      padding: 0 2px;
     }
     .msg-btn {
       background: #f1f5f9;
       border: 1px solid #e2e8f0;
       color: #475569;
-      font-size: 11.5px;
+      font-size: 11px;
       padding: 3px 8px;
       border-radius: 6px;
       cursor: pointer;
@@ -751,67 +769,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       align-items: center;
       gap: 4px;
       font-weight: 600;
-      transition: all 0.15s;
     }
-    .msg-btn:hover {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
+    .msg-btn:hover { background: #e2e8f0; color: #0f172a; }
     .msg-btn.copied { background: #dcfce7; color: #15803d; border-color: #86efac; }
 
-    /* تأثير الكتابة المباشرة البصري (Streaming Cursor) */
-    .streaming-cursor {
-      display: inline-block;
-      width: 8px;
-      height: 16px;
-      background: var(--primary);
-      margin-right: 3px;
-      animation: blink 0.8s infinite;
-      vertical-align: middle;
-      border-radius: 2px;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-
-    /* زر التمرير للأسفل السريع */
-    .scroll-bottom-btn {
-      position: absolute;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      box-shadow: var(--shadow-md);
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #334155;
-      cursor: pointer;
-      display: none;
-      align-items: center;
-      gap: 6px;
-      z-index: 15;
-      transition: all 0.2s;
-    }
-    .scroll-bottom-btn:hover { background: #f8fafc; color: var(--primary); }
-
-    /* منطقة الإدخال الفاخرة */
+    /* حقل الإدخال النظيف والمتجاوب (Floating Bar) */
     .input-section {
       background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
-      padding: 8px 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      position: relative;
-    }
-
-    .input-row {
+      padding: 6px 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
       display: flex;
       align-items: flex-end;
       gap: 8px;
@@ -823,10 +791,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border: none;
       outline: none;
       resize: none;
-      font-size: 14.5px;
-      max-height: 140px;
-      min-height: 44px;
-      line-height: 1.6;
+      font-size: 14px;
+      max-height: 120px;
+      min-height: 40px;
+      line-height: 1.5;
       color: var(--text-main);
       background: transparent;
     }
@@ -835,73 +803,52 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: flex;
       align-items: center;
       gap: 6px;
+      padding-bottom: 2px;
     }
 
     .btn-send {
       background: linear-gradient(135deg, #1d4ed8, #2563eb);
       color: white;
       border: none;
-      border-radius: var(--radius-md);
-      padding: 10px 18px;
-      font-size: 14px;
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 13.5px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-      box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+      gap: 5px;
+      box-shadow: 0 2px 6px rgba(37,99,235,0.2);
+      white-space: nowrap;
     }
-    .btn-send:hover {
-      background: linear-gradient(135deg, #1e40af, #1d4ed8);
-      transform: translateY(-1px);
-    }
+    .btn-send:hover { background: linear-gradient(135deg, #1e40af, #1d4ed8); }
 
     .btn-stop {
       background: #dc2626;
       color: white;
       border: none;
-      border-radius: var(--radius-md);
-      padding: 10px 18px;
-      font-size: 14px;
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 13.5px;
       font-weight: 700;
       cursor: pointer;
       display: none;
       align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
+      gap: 5px;
+      white-space: nowrap;
     }
     .btn-stop:hover { background: #b91c1c; }
 
-    /* شريط تذييل المطور السفلي */
-    .app-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 6px 0 6px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-    .app-footer a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 700;
-    }
-    .app-footer a:hover { text-decoration: underline; }
-
-    /* طبقة التعتيم للشاشات الصغيرة */
     .backdrop-overlay {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(15, 23, 42, 0.45);
+      background: rgba(15, 23, 42, 0.4);
       backdrop-filter: blur(2px);
       z-index: 95;
     }
 
-    /* ============================================================
-       نافذة بروفايل المطور المنبثقة (Developer Profile Modal)
-    ============================================================ */
+    /* نافذة المطور المنبثقة */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -911,95 +858,89 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       z-index: 200;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 14px;
     }
-    .modal-overlay.active {
-      display: flex;
-    }
+    .modal-overlay.active { display: flex; }
 
     .dev-modal {
       background: #ffffff;
       width: 100%;
-      max-width: 480px;
+      max-width: 440px;
       border-radius: var(--radius-lg);
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       overflow: hidden;
-      animation: modalPop 0.25s ease-out;
+      animation: modalPop 0.2s ease-out;
       border: 1px solid var(--border-color);
     }
     @keyframes modalPop {
-      from { transform: scale(0.92); opacity: 0; }
+      from { transform: scale(0.93); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
 
     .dev-modal-header {
       background: linear-gradient(135deg, #1e3a8a, #2563eb);
       color: white;
-      padding: 24px 20px;
+      padding: 20px 18px;
       text-align: center;
       position: relative;
     }
-    .dev-modal-header .avatar-box {
-      width: 72px;
-      height: 72px;
+    .dev-modal-header .code-badge-large {
+      font-family: monospace;
+      font-size: 20px;
+      font-weight: 900;
       background: #ffffff;
       color: #1d4ed8;
+      width: 54px;
+      height: 54px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
-      font-weight: 800;
-      margin: 0 auto 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-      border: 3px solid #bfdbfe;
+      margin: 0 auto 8px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
     }
-    .dev-modal-header h3 { font-size: 20px; font-weight: 800; }
-    .dev-modal-header p { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+    .dev-modal-header h3 { font-size: 18px; font-weight: 800; }
+    .dev-modal-header p { font-size: 12.5px; opacity: 0.9; margin-top: 3px; }
     .modal-close-btn {
       position: absolute;
-      top: 14px;
-      left: 14px;
+      top: 12px;
+      left: 12px;
       background: rgba(255,255,255,0.2);
       border: none;
       color: white;
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-size: 14px;
     }
-    .modal-close-btn:hover { background: rgba(255,255,255,0.35); }
 
     .dev-modal-body {
-      padding: 20px;
+      padding: 16px 18px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      font-size: 13.5px;
+      gap: 12px;
+      font-size: 13px;
       line-height: 1.7;
       color: #334155;
     }
     .skill-tags {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 6px;
+      gap: 5px;
+      margin-top: 4px;
     }
     .skill-tag {
       background: #eff6ff;
       color: #1d4ed8;
       border: 1px solid #bfdbfe;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11.5px;
       font-weight: 700;
     }
     .dev-modal-footer {
-      padding: 14px 20px;
+      padding: 12px 18px;
       background: #f8fafc;
       border-top: 1px solid var(--border-color);
       display: flex;
@@ -1012,17 +953,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: #1d4ed8;
       color: white;
       text-decoration: none;
-      padding: 10px 22px;
+      padding: 9px 20px;
       border-radius: var(--radius-md);
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 700;
-      transition: all 0.2s;
-      box-shadow: 0 3px 10px rgba(29,78,216,0.25);
     }
-    .cv-btn-large:hover { background: #1e40af; transform: translateY(-1px); }
+    .cv-btn-large:hover { background: #1e40af; }
 
     /* ============================================================
-       تجاوب الهواتف والشاشات الصغيرة (Mobile Responsive)
+       تجاوب الهواتف بدقة عالية (Mobile Responsiveness)
     ============================================================ */
     @media (max-width: 768px) {
       .sidebar {
@@ -1030,40 +969,38 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         top: 0;
         bottom: 0;
         right: 0;
-        width: 84%;
-        max-width: 320px;
+        width: 82%;
+        max-width: 300px;
         transform: translateX(100%);
         box-shadow: -4px 0 20px rgba(0,0,0,0.15);
       }
-      .sidebar.open {
-        transform: translateX(0);
-      }
+      .sidebar.open { transform: translateX(0); }
       .close-sidebar-btn { display: inline-block; }
       .backdrop-overlay.show { display: block; }
 
       header {
-        padding: 8px 12px;
+        padding: 8px 10px;
       }
-      .brand-title h1 { font-size: 16px; }
-      .model-pill { display: none; }
-      .dev-profile-btn { padding: 4px 10px; font-size: 11.5px; }
+      .brand-title h1 { font-size: 15px; }
+      .menu-toggle-btn { padding: 5px 8px; font-size: 12px; }
+      .status-badge { padding: 3px 7px; font-size: 11px; }
 
       .chat-container { padding: 8px; }
-      .msg-wrapper { max-width: 95%; }
+      .msg-wrapper { max-width: 94%; }
       .msg-wrapper.bot { max-width: 98%; }
-      .msg-bubble { padding: 10px 14px; font-size: 14px; }
+      .msg-bubble { padding: 10px 12px; font-size: 13.5px; }
 
-      .input-section { padding: 6px 10px; }
-      .btn-send, .btn-stop { padding: 8px 14px; font-size: 13px; }
+      .input-section { padding: 5px 8px; }
+      textarea#questionInput { font-size: 13.5px; min-height: 38px; }
+      .btn-send, .btn-stop { padding: 8px 12px; font-size: 13px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- طبقة التعتيم للموبايل -->
   <div class="backdrop-overlay" id="backdropOverlay" onclick="toggleSidebar(false)"></div>
 
-  <!-- الشريط الجانبي: دفتر الملاحظات المطور -->
+  <!-- الشريط الجانبي (دفتر الملاحظات + زر المطور) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h2>
@@ -1074,9 +1011,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
 
     <div class="sidebar-actions">
+      <!-- زر المطور مع أيقونة </> -->
+      <button class="sidebar-dev-btn" onclick="openDevModal()">
+        <span class="dev-code-icon">&lt;/&gt;</span>
+        <div class="dev-btn-text">
+          <span class="dev-main-title">المطور (عمرو الشرافي)</span>
+          <span class="dev-sub-title">السيرة الذاتية ومعرض الأعمال ↗</span>
+        </div>
+      </button>
+
       <button class="new-chat-btn" onclick="createNewChat()">
         <span>➕</span>
-        <span>محادثة جديدة (حفظ الحالية)</span>
+        <span>محادثة جديدة</span>
       </button>
 
       <div class="search-box">
@@ -1085,17 +1031,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
     </div>
 
-    <div class="notes-list" id="notesListContainer">
-      <!-- يتم تعبئة بطاقات الملاحظات بواسطة JavaScript -->
-    </div>
+    <div class="notes-list" id="notesListContainer"></div>
 
     <div class="sidebar-footer">
-      <span id="savedStatsText">لا توجد محادثات محفوظة</span>
+      <span id="savedStatsText">لا توجد محادثات</span>
       <button class="clear-all-notes-btn" onclick="confirmClearAllNotes()">مسح الكل</button>
     </div>
   </aside>
 
-  <!-- الواجهة الرئيسية للمحادثة -->
+  <!-- الواجهة الرئيسية -->
   <div class="main-wrapper">
     <header>
       <div class="header-right">
@@ -1105,67 +1049,49 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </button>
         <div class="brand-title">
           <h1>Amro AI CHAT ✨</h1>
-          <span class="model-pill">Gemini 3 Turbo</span>
         </div>
       </div>
 
       <div class="header-left">
-        <button class="dev-profile-btn" onclick="openDevModal()">
-          <span>👨‍💻</span>
-          <span>المطور</span>
-        </button>
         <div class="status-badge ready" id="statusBadge">جاهز ✨</div>
       </div>
     </header>
 
     <div class="chat-container">
-      <div class="chat-messages" id="chatMessagesArea">
-        <!-- الرسائل هنا -->
-      </div>
-
-      <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom(true)">
-        <span>⬇️ التمرير لأسفل</span>
-      </button>
+      <div class="chat-messages" id="chatMessagesArea"></div>
 
       <div class="input-section">
-        <div class="input-row">
-          <textarea 
-            id="questionInput" 
-            placeholder="اكتب رسالتك لـ Amro AI... (Enter للإرسال، Shift+Enter لسطر جديد)"
-            rows="1"></textarea>
-          
-          <div class="action-controls">
-            <button id="sendBtn" class="btn-send" onclick="handleSendMessage()">
-              <span>إرسال</span>
-              <span>🚀</span>
-            </button>
-            <button id="stopBtn" class="btn-stop" onclick="handleStopGeneration()">
-              <span>إيقاف</span>
-              <span>⏹️</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="app-footer">
-          <span>👨‍💻 تطوير: <strong>عمرو الشرافي</strong> — مهندس برمجيات وذكاء اصطناعي</span>
-          <a href="https://amrocv.vercel.app" target="_blank" rel="noopener noreferrer">السيرة الذاتية ومعرض الأعمال ↗</a>
+        <textarea 
+          id="questionInput" 
+          placeholder="اكتب سؤالك هنا... 💬"
+          rows="1"></textarea>
+        
+        <div class="action-controls">
+          <button id="sendBtn" class="btn-send" onclick="handleSendMessage()">
+            <span>إرسال</span>
+            <span>🚀</span>
+          </button>
+          <button id="stopBtn" class="btn-stop" onclick="handleStopGeneration()">
+            <span>إيقاف</span>
+            <span>⏹️</span>
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- نافذة بروفايل المطور (Modal) -->
+  <!-- نافذة المطور المنبثقة (Modal) -->
   <div class="modal-overlay" id="devModalOverlay" onclick="closeDevModalOnBg(event)">
     <div class="dev-modal">
       <div class="dev-modal-header">
         <button class="modal-close-btn" onclick="closeDevModal()">✕</button>
-        <div class="avatar-box">AS</div>
+        <div class="code-badge-large">&lt;/&gt;</div>
         <h3>عمرو الشرافي | Amro Alshurafy</h3>
         <p>Software Engineer & AI Solutions Developer</p>
       </div>
       <div class="dev-modal-body">
         <p>
-          مرحباً بك! أنا <strong>عمرو الشرافي</strong>، مهندس برمجيات متخصص في بناء تطبيقات الهاتف والويب وحلول الذكاء الاصطناعي التوليدي.
+          مرحباً بك! أنا <strong>عمرو الشرافي</strong>، مطور برمجيات وتطبيقات وويب وحلول ذكاء اصطناعي.
         </p>
         <p>
           🎓 <strong>التعليم:</strong> طالب تقنية معلومات (IT) — جامعة شبوة.
@@ -1178,36 +1104,27 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <span class="skill-tag">Python & Flask</span>
             <span class="skill-tag">Google Gemini AI</span>
             <span class="skill-tag">RESTful APIs</span>
-            <span class="skill-tag">Clean Architecture</span>
           </div>
         </div>
-        <p style="font-size: 12.5px; color: #64748b; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1;">
-          💡 تم تصميم <strong>Amro AI CHAT</strong> ليوفر تجربة محادثة فائقة السرعة مع بث مباشر للردود، وحماية أمنية للبيانات، ودفتر ملاحظات متطور لتنظيم أفكارك.
-        </p>
       </div>
       <div class="dev-modal-footer">
         <a class="cv-btn-large" href="https://amrocv.vercel.app" target="_blank" rel="noopener noreferrer">
-          <span>🌐 زيارة معرض الأعمال والسيرة الذاتية (CV)</span>
+          <span>🌐 فتح السيرة الذاتية ومعرض الأعمال</span>
           <span>↗</span>
         </a>
       </div>
     </div>
   </div>
 
-  <!-- منطق التطبيق التفاعلي (JavaScript) -->
+  <!-- منطق JavaScript المطور -->
   <script>
-    // تهيئة مكتبة Marked لتنسيق Markdown الآمن
-    marked.setOptions({
-      gfm: true,
-      breaks: true
-    });
+    marked.setOptions({ gfm: true, breaks: true });
 
     const STORAGE_KEYS = {
       NOTES: "amro_ai_notes_v2",
       ACTIVE_CHAT: "amro_ai_active_chat_v2"
     };
 
-    // حالة التطبيق العامة
     let currentHistory = [];
     let currentNoteId = null;
     let isGenerating = false;
@@ -1215,13 +1132,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let notes = loadSavedNotes();
     let searchTerm = "";
 
-    // التعامل الآمن مع localStorage
     function loadSavedNotes() {
       try {
         const raw = localStorage.getItem(STORAGE_KEYS.NOTES);
         return raw ? JSON.parse(raw) : [];
       } catch (e) {
-        console.error("خطأ في قراءة الملاحظات:", e);
         return [];
       }
     }
@@ -1229,9 +1144,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function saveNotesToStorage() {
       try {
         localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
-      } catch (e) {
-        console.error("خطأ في تخزين الملاحظات:", e);
-      }
+      } catch (e) {}
     }
 
     function saveActiveChatToStorage() {
@@ -1245,12 +1158,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         } else {
           localStorage.removeItem(STORAGE_KEYS.ACTIVE_CHAT);
         }
-      } catch (e) {
-        console.error("خطأ في حفظ المحادثة النشطة:", e);
-      }
+      } catch (e) {}
     }
 
-    // فتح وإغلاق الشريط الجانبي
     function toggleSidebar(show) {
       const sidebar = document.getElementById("sidebar");
       const overlay = document.getElementById("backdropOverlay");
@@ -1263,7 +1173,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
     }
 
-    // فتح وإغلاق نافذة المطور
     function openDevModal() {
       document.getElementById("devModalOverlay").classList.add("active");
     }
@@ -1274,14 +1183,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (e.target.id === "devModalOverlay") closeDevModal();
     }
 
-    // تحديث شارة الحالة
     function setStatus(text, type = "ready") {
       const badge = document.getElementById("statusBadge");
       badge.textContent = text;
       badge.className = "status-badge " + type;
     }
 
-    // نسخ النصوص للحافظة
     function copyText(text, btnElement, successMsg = "✅ تم النسخ!") {
       const origText = btnElement.innerHTML;
       navigator.clipboard.writeText(text).then(() => {
@@ -1292,33 +1199,58 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           btnElement.classList.remove("copied");
         }, 1800);
       }).catch(() => {
-        // Fallback
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.top = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
         btnElement.innerHTML = successMsg;
-        btnElement.classList.add("copied");
-        setTimeout(() => {
-          btnElement.innerHTML = origText;
-          btnElement.classList.remove("copied");
-        }, 1800);
+        setTimeout(() => { btnElement.innerHTML = origText; }, 1800);
       });
     }
 
-    // تنسيق وتطهير Markdown ضد ثغرات XSS
+    // تنظيف النصوص تماماً للنطق الصوتي بحيث ينطق الكلمات فقط دون الرموز التعبيرية أو الأكواد
+    function cleanTextForSpeech(raw) {
+      if (!raw) return "";
+      let t = raw;
+
+      // 1. إزالة كتل الأكواد البرمجية بالكامل
+      t = t.replace(/```[\s\S]*?```/g, " كود برمجي ");
+      t = t.replace(/`([^`]+)`/g, "$1");
+
+      // 2. إزالة روابط Markdown وروابط الويب
+      t = t.replace(/!\[.*?\]\(.*?\)/g, "");
+      t = t.replace(/\[(.*?)\]\(.*?\)/g, "$1");
+      t = t.replace(/https?:\/\/\S+/g, "");
+
+      // 3. إزالة كافة الرموز التعبيرية (Emojis) والرسومات حتى لا ينطق المتصفح "صاروخ", "مصباح", إلخ
+      t = t.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, "");
+      try {
+        t = t.replace(/\p{Extended_Pictographic}/gu, "");
+      } catch (e) {}
+
+      // 4. إزالة رموز Markdown الخاصة بالتنسيق (*, #, _, ~, >, |, -)
+      t = t.replace(/[#*_~>|]/g, " ");
+      t = t.replace(/^[-+]\s+/gm, "");
+
+      // 5. تقليل المسافات المكررة
+      t = t.replace(/\s+/g, " ").trim();
+      return t;
+    }
+
+    function speakMessage(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+
+      const clean = cleanTextForSpeech(text);
+      if (!clean) return;
+
+      const utter = new SpeechSynthesisUtterance(clean);
+      utter.lang = "ar-SA";
+      utter.rate = 1.0;
+      window.speechSynthesis.speak(utter);
+    }
+
     function renderMarkdownToHtml(markdownText) {
       const rawHtml = marked.parse(markdownText || "");
-      return DOMPurify.sanitize(rawHtml, {
-        ADD_ATTR: ['target', 'rel']
-      });
+      return DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target', 'rel'] });
     }
 
-    // إنشاء كتلة رسالة
     function createMessageElement(role, text = "") {
       const area = document.getElementById("chatMessagesArea");
       const wrapper = document.createElement("div");
@@ -1337,14 +1269,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
       bubble.appendChild(content);
 
-      // شريط الأدوات لرسائل الذكاء الاصطناعي
       if (role === "bot") {
         const toolbar = document.createElement("div");
         toolbar.className = "msg-toolbar";
 
         const copyBtn = document.createElement("button");
         copyBtn.className = "msg-btn";
-        copyBtn.innerHTML = "<span>📋</span><span>نسخ الرد</span>";
+        copyBtn.innerHTML = "<span>📋</span><span>نسخ</span>";
         copyBtn.onclick = () => copyText(wrapper.dataset.fullText || "", copyBtn);
 
         const speakBtn = document.createElement("button");
@@ -1363,7 +1294,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       wrapper.dataset.fullText = text;
       area.appendChild(wrapper);
 
-      if (role === "bot") {
+      if (role === "bot" && text) {
         enhanceCodeBlocks(wrapper);
       }
 
@@ -1371,16 +1302,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       return { wrapper, bubble, content };
     }
 
-    // تلوين وإضافة أزرار النسخ لكتل الأكواد البرمجية
     function enhanceCodeBlocks(container) {
       container.querySelectorAll("pre code").forEach((codeEl) => {
-        // تلوين الكود عبر Highlight.js
         hljs.highlightElement(codeEl);
 
         const pre = codeEl.parentElement;
         if (pre.parentElement.classList.contains("code-container")) return;
 
-        // استخراج اسم لغة البرمجة
         let langName = "code";
         codeEl.classList.forEach(cls => {
           if (cls.startsWith("language-")) {
@@ -1407,39 +1335,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
     }
 
-    // التمرير التلقائي لأسفل
-    function scrollToBottom(force = false) {
+    function scrollToBottom() {
       const area = document.getElementById("chatMessagesArea");
-      const isNearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
-      if (force || isNearBottom) {
-        area.scrollTop = area.scrollHeight;
-      }
-    }
-
-    // مراقبة التمرير لإظهار زر التمرير السريع
-    document.getElementById("chatMessagesArea").addEventListener("scroll", () => {
-      const area = document.getElementById("chatMessagesArea");
-      const btn = document.getElementById("scrollBottomBtn");
-      if (area.scrollHeight - area.scrollTop - area.clientHeight > 200) {
-        btn.style.display = "flex";
-      } else {
-        btn.style.display = "none";
-      }
-    });
-
-    // النطق الصوتي للرسالة (Speech Synthesis)
-    function speakMessage(text) {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      // تنظيف الرموز الخاصة بالماركداون قبل القراءة
-      const clean = text.replace(/[*#`_~]/g, "").slice(0, 500);
-      const utter = new SpeechSynthesisUtterance(clean);
-      utter.lang = "ar-SA";
-      window.speechSynthesis.speak(utter);
+      area.scrollTop = area.scrollHeight;
     }
 
     // ============================================================
-    // إدارة دفتر الملاحظات (Notebook Management)
+    // إدارة دفتر الملاحظات
     // ============================================================
     function renderNotesList() {
       const container = document.getElementById("notesListContainer");
@@ -1457,7 +1359,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         });
       }
 
-      // ترتيب الملاحظات: المثبتة أولاً (Pinned)، ثم الأحدث
       filtered.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -1466,12 +1367,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       document.getElementById("notesCountBadge").textContent = notes.length;
       document.getElementById("savedStatsText").textContent = 
-        notes.length ? `${notes.length} محادثة محفوظة` : "لا توجد محادثات محفوظة";
+        notes.length ? `${notes.length} محادثة محفوظة` : "لا توجد محادثات";
 
       if (filtered.length === 0) {
         container.innerHTML = `
           <div class="empty-notes">
-            ${searchTerm.trim() ? "لا توجد نتائج مطابقة لبحثك 🔍" : "دفتر الملاحظات فارغ حالياً 📭<br>ابدأ بمحادثة وسيتم حفظها هنا تلقائياً عند الضغط على 'محادثة جديدة'."}
+            ${searchTerm.trim() ? "لا توجد نتائج مطابقة 🔍" : "دفتر الملاحظات فارغ 📭<br>ابدأ بمحادثة وستُحفظ هنا تلقائياً."}
           </div>
         `;
         return;
@@ -1487,9 +1388,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="note-card-top">
             <div class="note-title" title="${escapeHtml(note.title)}">${note.pinned ? '📌 ' : '💬 '}${escapeHtml(note.title)}</div>
             <div class="note-card-actions">
-              <button class="note-action-btn pin-btn ${note.pinned ? 'is-pinned' : ''}" title="${note.pinned ? 'إلغاء التثبيت' : 'تثبيت في الأعلى'}" onclick="togglePinNote(event, ${note.id})">📌</button>
+              <button class="note-action-btn pin-btn ${note.pinned ? 'is-pinned' : ''}" title="${note.pinned ? 'إلغاء التثبيت' : 'تثبيت'}" onclick="togglePinNote(event, ${note.id})">📌</button>
               <button class="note-action-btn" title="إعادة تسمية" onclick="renameNotePrompt(event, ${note.id})">✏️</button>
-              <button class="note-action-btn" title="تصدير المحادثة" onclick="exportNoteMenu(event, ${note.id})">📥</button>
+              <button class="note-action-btn" title="تصدير" onclick="exportNoteMenu(event, ${note.id})">📥</button>
               <button class="note-action-btn delete-btn" title="حذف" onclick="deleteNoteItem(event, ${note.id})">🗑️</button>
             </div>
           </div>
@@ -1518,12 +1419,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderNotesList();
     }
 
-    // تصدير المحادثة الحالية للدفتر
     function autoSaveCurrentChatToNotes() {
       if (!currentHistory || currentHistory.length === 0) return;
 
       const firstUserMsg = currentHistory.find(m => m.role === "user")?.parts?.[0]?.text || "محادثة جديدة";
-      const cleanTitle = firstUserMsg.length > 36 ? firstUserMsg.substring(0, 36) + "..." : firstUserMsg;
+      const cleanTitle = firstUserMsg.length > 30 ? firstUserMsg.substring(0, 30) + "..." : firstUserMsg;
       const nowStr = new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
 
       if (currentNoteId) {
@@ -1568,7 +1468,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       saveActiveChatToStorage();
       renderNotesList();
 
-      setStatus("📒 ملاحظة معروضة", "ready");
+      setStatus("📒 معروضة", "ready");
       if (window.innerWidth <= 768) toggleSidebar(false);
     }
 
@@ -1599,10 +1499,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const n = notes.find(item => item.id === id);
       if (!n || !n.history) return;
 
-      const format = prompt("اختر صيغة التصدير:\n1 = ملف Markdown (.md)\n2 = ملف نصي عادي (.txt)\n3 = طباعة المحادثة", "1");
+      const format = prompt("اختر صيغة التصدير:\n1 = ملف Markdown (.md)\n2 = ملف نصي (.txt)\n3 = طباعة", "1");
       if (!format) return;
 
-      let content = `# ${n.title}\nتاريخ المحادثة: ${n.date}\nمطور النظام: عمرو الشرافي (Amro Alshurafy)\n\n---\n\n`;
+      let content = `# ${n.title}\nتاريخ: ${n.date}\nمطور النظام: عمرو الشرافي\n\n---\n\n`;
       n.history.forEach(m => {
         const sender = m.role === "user" ? "👤 أنت" : "✨ Amro AI";
         const text = m.parts?.[0]?.text || "";
@@ -1632,7 +1532,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function deleteNoteItem(event, id) {
       event.stopPropagation();
-      if (!confirm("هل أنت متأكد من حذف هذه المحادثة من دفتر الملاحظات؟")) return;
+      if (!confirm("هل تريد حذف هذه المحادثة من دفتر الملاحظات؟")) return;
 
       notes = notes.filter(n => n.id !== id);
       saveNotesToStorage();
@@ -1648,7 +1548,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function confirmClearAllNotes() {
       if (notes.length === 0) return;
-      if (confirm("⚠️ تحذير: هل تريد حقاً مسح كافة المحادثات المحفوظة في دفتر الملاحظات؟")) {
+      if (confirm("⚠️ هل أنت متأكد من مسح كافة المحادثات المحفوظة؟")) {
         notes = [];
         currentNoteId = null;
         currentHistory = [];
@@ -1689,26 +1589,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           createMessageElement(msg.role === "user" ? "user" : "bot", text);
         }
       });
-      scrollToBottom(true);
+      scrollToBottom();
     }
 
+    // رسالة ترحيبية خفيفة وأنيقة وغير متكلفة
     function showWelcomeMessage() {
       const area = document.getElementById("chatMessagesArea");
-      area.innerHTML = "";
-      const welcomeText = 
-        `أهلاً بك في **Amro AI CHAT** 👋✨\n\n` +
-        `أنا مساعدك الذكي فائق التطور، طُوّرت بفخر على يد المطور **عمرو الشرافي (Amro Alshurafy)** 🚀\n\n` +
-        `💡 **مميزات جديدة في هذا الإصدار:**\n` +
-        `* ⚡ **بث مباشر للإجابات (Streaming):** طباعة ذكية وسريعة وفورية.\n` +
-        `* 🛡️ **حماية أمنية مشددة:** تطهير المدخلات وتحديد معدل الطلبات.\n` +
-        `* 📒 **دفتر ملاحظات متطور:** بحث فوري، تثبيت المحادثات 📌، إعادة تسمية ✏️، وتصدير كامل 📥.\n` +
-        `* 📋 **نسخ تلقائي للأكواد البرمجية** مع تلوين دقيق لكافة لغات البرمجة.\n\n` +
-        `تفضل بطرح أي سؤال أو موضوع ترغب في مناقشته! ✨`;
-      createMessageElement("bot", welcomeText);
+      area.innerHTML = `
+        <div class="welcome-card">
+          <h3><span>✨</span><span>أهلاً بك في Amro AI CHAT</span></h3>
+          <p>أنا مساعدك الذكي، طُوِّرت بواسطة المهندس <strong>عمرو الشرافي</strong>.</p>
+          <p>جاهز لمساعدتك في الإجابة على استفساراتك، كتابة الأكواد، وتنسيق الأفكار بكل سرعة.</p>
+          <div class="welcome-hint">💬 تفضل بكتابة سؤالك في الأسفل للبدء.</div>
+        </div>
+      `;
     }
 
     // ============================================================
-    // إرسال الرسالة ودعم البث الحي (Streaming - SSE)
+    // إرسال السؤال وإظهار مؤشر الكتابة الوامض دون طباعة حرفاً بحرف
     // ============================================================
     async function handleSendMessage() {
       if (isGenerating) return;
@@ -1717,20 +1615,22 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const question = input.value.trim();
       if (!question) return;
 
-      // إضافة رسالة المستخدم للواجهة والسياق
       createMessageElement("user", question);
       input.value = "";
       adjustTextareaHeight(input);
 
-      // تحديث حالة الواجهة
       setGeneratingUI(true);
       setStatus("يكتب الآن ✍️", "streaming");
 
-      // تجهيز رسالة الذكاء الاصطناعي للبث
+      // إنشاء عنصر رسالة البوت مع مؤشر "جاري الكتابة..." ووميض المؤشر فقط
       const botElements = createMessageElement("bot", "");
-      const cursorSpan = document.createElement("span");
-      cursorSpan.className = "streaming-cursor";
-      botElements.content.appendChild(cursorSpan);
+      botElements.content.innerHTML = `
+        <div class="typing-box">
+          <span>جاري الكتابة... ✍️</span>
+          <span class="typing-dots"><span></span><span></span><span></span></span>
+          <span class="streaming-cursor"></span>
+        </div>
+      `;
 
       abortController = new AbortController();
       let fullAnswer = "";
@@ -1746,82 +1646,70 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           signal: abortController.signal
         });
 
-        // التعامل مع تجاوز حد الطلبات (Rate Limit) أو أخطاء الخادم
         if (response.status === 429) {
           const errData = await response.json();
-          throw new Error(errData.error || "تم تجاوز الحد المسموح للطلبات المؤقتة (Rate Limit)، يرجى الانتظار قليلاً.");
+          throw new Error(errData.error || "تم تجاوز حد الطلبات المؤقت (Rate Limit)، يرجى الانتظار قليلاً.");
         }
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `خطأ في الخادم (${response.status})`);
+          throw new Error(errData.error || `خطأ في الاتصال (${response.status})`);
         }
 
-        // قراءة دفق الأحداث المرسلة من الخادم (Server-Sent Events)
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
 
+        // استقبال وتجميع الرد في الخلفية دون عرضه حرفاً بحرف أو كلمة بكلمة
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
-          buffer = lines.pop(); // الاحتفاظ بالسطر غير المكتمل في المخزن
+          buffer = lines.pop();
 
           for (const line of lines) {
             const trimmed = line.trim();
             if (!trimmed.startsWith("data: ")) continue;
             const dataStr = trimmed.slice(6).trim();
 
-            if (dataStr === "[DONE]") {
-              break;
-            }
+            if (dataStr === "[DONE]") break;
 
             try {
               const parsed = JSON.parse(dataStr);
-              if (parsed.error) {
-                throw new Error(parsed.error);
-              }
+              if (parsed.error) throw new Error(parsed.error);
               if (parsed.chunk) {
                 fullAnswer += parsed.chunk;
-                botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer);
-                botElements.content.appendChild(cursorSpan);
-                botElements.wrapper.dataset.fullText = fullAnswer;
-                scrollToBottom();
               }
-            } catch (jsonErr) {
-              // تجاهل السطور غير المنسقة
-            }
+            } catch (jsonErr) {}
           }
         }
 
-        // إزالة مؤشر الكتابة وإثراء كتل الأكواد بعد اكتمال الرد
-        cursorSpan.remove();
+        // عند اكتمال الرد كلياً يتم عرضه دفعة واحدة بتنسيق Markdown والأكواد الملونة
         botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer);
         botElements.wrapper.dataset.fullText = fullAnswer;
         enhanceCodeBlocks(botElements.wrapper);
 
-        // حفظ في التاريخ والسياق
         currentHistory.push({ role: "user", parts: [{ text: question }] });
         currentHistory.push({ role: "model", parts: [{ text: fullAnswer }] });
 
         autoSaveCurrentChatToNotes();
-        setStatus(currentNoteId ? "📒 محفوظة في الدفتر" : "متصل ✅", "ready");
+        setStatus(currentNoteId ? "📒 محفوظة" : "جاهز ✨", "ready");
 
       } catch (err) {
-        cursorSpan.remove();
         if (err.name === "AbortError") {
-          botElements.content.innerHTML = renderMarkdownToHtml(
-            (fullAnswer ? fullAnswer + "\n\n" : "") + "*(تم إيقاف توليد الإجابة بناءً على طلبك ⏹️)*"
-          );
-          setStatus("تم الإيقاف ⏹️", "ready");
           if (fullAnswer) {
+            botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer) + `<div style="font-size: 11px; color: #dc2626; margin-top: 6px;">⏹️ (تم إيقاف الرد)</div>`;
+            botElements.wrapper.dataset.fullText = fullAnswer;
+            enhanceCodeBlocks(botElements.wrapper);
             currentHistory.push({ role: "user", parts: [{ text: question }] });
             currentHistory.push({ role: "model", parts: [{ text: fullAnswer }] });
             autoSaveCurrentChatToNotes();
+          } else {
+            botElements.content.innerHTML = `<span style="color: #64748b; font-size: 12px;">⏹️ تم إيقاف توليد الإجابة.</span>`;
           }
+          setStatus("متوقف ⏹️", "ready");
         } else {
           botElements.content.innerHTML = `<span style="color: #dc2626; font-weight: 700;">⚠️ عذراً: ${escapeHtml(err.message)}</span>`;
           setStatus("خطأ ❌", "ready");
@@ -1830,6 +1718,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         abortController = null;
         setGeneratingUI(false);
         input.focus();
+        scrollToBottom();
       }
     }
 
@@ -1846,15 +1735,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       document.getElementById("stopBtn").style.display = active ? "flex" : "none";
     }
 
-    // التوسيع التلقائي لحقل الإدخال
     const textarea = document.getElementById("questionInput");
     function adjustTextareaHeight(el) {
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 140) + "px";
+      el.style.height = Math.min(el.scrollHeight, 120) + "px";
     }
-    textarea.addEventListener("input", function() {
-      adjustTextareaHeight(this);
-    });
+    textarea.addEventListener("input", function() { adjustTextareaHeight(this); });
 
     textarea.addEventListener("keydown", function(e) {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -1863,7 +1749,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
     });
 
-    // تهيئة التطبيق عند الفتح
     function initApplication() {
       renderNotesList();
 
@@ -1876,13 +1761,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             currentNoteId = parsed.currentNoteId || null;
             renderCurrentHistory();
             renderNotesList();
-            setStatus(currentNoteId ? "📒 محفوظة في الدفتر" : "جاهز ✨", "ready");
+            setStatus(currentNoteId ? "📒 محفوظة" : "جاهز ✨", "ready");
             return;
           }
         }
-      } catch (e) {
-        console.warn("خطأ في قراءة المحادثة السابقة:", e);
-      }
+      } catch (e) {}
 
       showWelcomeMessage();
     }
@@ -1894,12 +1777,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 """
 
 # ==========================================
-# 5. مسارات الـ Backend وواجهات الـ API
+# 5. مسارات الـ Backend
 # ==========================================
 
 @app.after_request
 def add_security_headers(response):
-    """إضافة ترويسات أمنية لحماية التطبيق"""
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -1907,17 +1789,10 @@ def add_security_headers(response):
 
 @app.route("/")
 def home():
-    """عرض الواجهة التفاعلية الرئيسية"""
     return render_template_string(HTML_TEMPLATE)
 
 @app.route("/chat/stream", methods=["POST"])
 def chat_stream():
-    """
-    مسار البث المباشر (SSE Streaming):
-    - يطبق فحص الـ Rate Limiting بدقة.
-    - يتحقق من سلامة المدخلات وتطهيرها.
-    - يبث الإجابة كلمة بكلمة مع آلية Fallback ذكية للنماذج.
-    """
     client_ip = get_client_ip()
     allowed, retry_after = rate_limiter.is_allowed(client_ip)
     if not allowed:
@@ -1928,7 +1803,7 @@ def chat_stream():
     api_key = get_api_key()
     if not api_key:
         return jsonify({
-            "error": "مفتاح Gemini API غير مضبوط بشكل صحيح في ملف .env أو متغيرات البيئة."
+            "error": "مفتاح Gemini API غير مضبوط في ملف .env."
         }), 500
 
     validated, err_msg = validate_and_sanitize_payload(request.json or {})
@@ -1936,8 +1811,6 @@ def chat_stream():
         return jsonify({"error": err_msg}), 400
 
     question, history = validated
-
-    # بناء سياق الرسائل المتوافق مع Gemini API
     contents = history + [{"role": "user", "parts": [{"text": question}]}]
 
     payload = {
@@ -1952,7 +1825,6 @@ def chat_stream():
     }
 
     def generate_events():
-        # محاولة الاتصال بالنماذج حسب ترتيب الأولوية
         model_errors = []
         stream_success = False
 
@@ -1967,15 +1839,12 @@ def chat_stream():
                 res = requests.post(url, headers=headers, json=payload, stream=True, timeout=18)
                 if not res.ok:
                     try:
-                        err_json = res.json()
-                        err_text = err_json.get("error", {}).get("message", res.text[:200])
+                        err_text = res.json().get("error", {}).get("message", res.text[:200])
                     except Exception:
                         err_text = res.text[:200]
                     model_errors.append(f"{model}: {err_text}")
-                    # في حال كان الخطأ 404 أو 503 ننتقل تلقائياً للنموذج التالي
                     continue
 
-                # معالجة التدفق وإرسال الأحداث للعميل
                 for line in res.iter_lines():
                     if not line:
                         continue
@@ -2004,8 +1873,7 @@ def chat_stream():
                 model_errors.append(f"{model}: {str(e)}")
                 continue
 
-        # في حال فشلت كل النماذج
-        error_msg = "تعذر الحصول على استجابة من نماذج الذكاء الاصطناعي حالياً. يرجى التحقق من الاتصال أو المحاولة لاحقاً."
+        error_msg = "تعذر الحصول على استجابة من نماذج الذكاء الاصطناعي حالياً."
         yield f"data: {json.dumps({'error': error_msg}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -2020,12 +1888,11 @@ def chat_stream():
 
 @app.route("/chat", methods=["POST"])
 def chat_legacy():
-    """مسار تقليدي احتياطي (Non-streaming Fallback)"""
     client_ip = get_client_ip()
     allowed, retry_after = rate_limiter.is_allowed(client_ip)
     if not allowed:
         return jsonify({
-            "error": f"تم تجاوز الحد المسموح للطلبات المؤقتة (Rate Limit). يرجى الانتظار {retry_after} ثانية."
+            "error": f"تم تجاوز الحد المسموح للطلبات المؤقتة. يرجى الانتظار {retry_after} ثانية."
         }), 429, {"Retry-After": str(retry_after)}
 
     api_key = get_api_key()
