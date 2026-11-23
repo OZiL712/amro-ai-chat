@@ -71,17 +71,17 @@ PRIMARY_MODELS = [
     "gemini-3.8-flash"
 ]
 
+# تعليمات نظام واضحة ومباشرة: التركيز التام على إجابة السؤال دون الترويج للمطور إلا عند السؤال الصريح عنه
 SYSTEM_INSTRUCTION_TEXT = (
-    "أنت Amro AI ✨، مساعد ذكاء اصطناعي عربي فائق الذكاء واللباقة، صُممت وطُوّرت بعناية على يد المطور عمرو الشرافي (Amro Alshurafy). "
-    "أسلوبك ودود، مبدع، دقيق، وسريع الإجابة. "
-    "نظّم إجاباتك دوماً بتنسيق Markdown احترافي: استخدم العناوين الواضحة، القوائم النقطية، الجداول المقارنة عند الحاجة، والرموز التعبيرية المناسبة (🚀💡✨📌💻🎯) لجعل القراءة ممتعة وسلسة. "
-    "عند كتابة الأكواد البرمجية، اكتب أكواداً نظيفة وشاملة ومكتوبة داخل كتل كود مناسبة مع تحديد لغة البرمجة دائماً (مثل ```python أو ```dart أو ```javascript). "
-    "إذا سُئلت عن هويتك أو من طورك، أجب بفخر واعتزاز أنك Amro AI الذي طوّره المهندس عمرو الشرافي (Amro Alshurafy)؛ "
-    "مطور برمجيات وتطبيقات وويب وحلول ذكاء اصطناعي (Flutter • React • Python • AI Solutions)، وطالب تقنية معلومات في جامعة شبوة، ورابط معرض أعماله وسيرته الذاتية هو: https://amrocv.vercel.app ."
+    "أنت Amro AI ✨، مساعد ذكاء اصطناعي عربي عملي ومفيد وفائق الذكاء. "
+    "مهمتك الأساسية: أجب عن سؤال المستخدم مباشرة وبكل دقة ووضوح ولباقة، وقدّم حلولاً برمجية ومعلومات منسقة باحترافية. "
+    "توجيه هام وصارم: لا تذكر مطورك ولا تتحدث عنه أو عن إنجازاته أو سيرته الذاتية في سياق المحادثات العادية أو البرمجية إطلاقاً. "
+    "الحالة الوحيدة المسموح فيها بذكره: إذا سألك المستخدم صراحةً وبشكل مباشر: (من أنت؟ أو من طورك؟ أو من صنعك؟)، حينها فقط أجب بإيجاز واعتدال أنك Amro AI الذي طوّره المهندس عمرو الشرافي مع رابط https://amrocv.vercel.app . في غير ذلك، ركز بنسبة 100% على موضوع السؤال المطلوب فقط. "
+    "نظّم ردودك بتنسيق Markdown أنيق ومرتب بدون إطالة أو حشو غير ضروري."
 )
 
 # ==========================================
-# 3. التحقق من المدخلات وتطهيرها (Sanitization)
+# 3. التحقق من المدخلات وتطهيرها
 # ==========================================
 def validate_and_sanitize_payload(data):
     if not isinstance(data, dict):
@@ -126,7 +126,7 @@ def validate_and_sanitize_payload(data):
     return (question, clean_history), None
 
 # ==========================================
-# 4. الواجهة الأمامية المتطورة والمتجاوبة
+# 4. الواجهة الأمامية (Desktop & Mobile Optimized)
 # ==========================================
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -155,10 +155,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       --text-main: #0f172a;
       --text-muted: #64748b;
       --border-color: #e2e8f0;
-      --sidebar-width: 310px;
-      --radius-lg: 16px;
-      --radius-md: 12px;
-      --radius-sm: 8px;
+      --sidebar-width: 290px;
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
     }
 
     * {
@@ -171,17 +171,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       scrollbar-color: #cbd5e1 transparent;
     }
 
-    /* تحسين وتخصيص أشرطة التمرير وإخفاء أسهم ويندوز المزعجة */
+    /* تخصيص شريط التمرير بالكامل وإزالة أسهم ويندوز المزعجة */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     ::-webkit-scrollbar-track {
       background: transparent;
     }
     ::-webkit-scrollbar-thumb {
       background: #cbd5e1;
-      border-radius: 10px;
+      border-radius: 8px;
     }
     ::-webkit-scrollbar-thumb:hover {
       background: #94a3b8;
@@ -201,10 +201,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: var(--text-main);
       overflow: hidden;
       display: flex;
+      font-size: 13.5px;
     }
 
     /* ============================================================
-       الشريط الجانبي (Sidebar) على الكمبيوتر والموبايل
+       الشريط الجانبي للكمبيوتر: يتمرر بكامل عناصره لراحة العرض
     ============================================================ */
     .sidebar {
       width: var(--sidebar-width);
@@ -217,11 +218,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex-direction: column;
       flex-shrink: 0;
       z-index: 100;
-      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden;
+      transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+      /* تمرير القائمة الجانبية بكامل محتوياتها بسلاسة */
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
-    /* عند تصغير القائمة في الكمبيوتر */
     .sidebar.collapsed {
       width: 0 !important;
       border-left: none !important;
@@ -230,8 +232,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .sidebar-header {
-      padding: 14px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
       background: #f8fafc;
+      padding: 11px 14px;
       border-bottom: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
@@ -240,7 +245,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .sidebar-header h2 {
-      font-size: 15px;
+      font-size: 13.5px;
       font-weight: 800;
       color: #0f172a;
       display: flex;
@@ -251,9 +256,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .sidebar-header h2 .badge {
       background: #e2e8f0;
       color: #475569;
-      font-size: 11px;
-      padding: 2px 7px;
-      border-radius: 12px;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
       font-weight: 700;
     }
 
@@ -261,50 +266,49 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: none;
       background: none;
       border: none;
-      font-size: 18px;
+      font-size: 16px;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 4px;
-      border-radius: 6px;
+      padding: 3px;
+      border-radius: 5px;
     }
     .close-sidebar-btn:hover { background: #e2e8f0; color: #0f172a; }
 
     .sidebar-actions {
-      padding: 12px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       border-bottom: 1px solid var(--border-color);
-      background: #fff;
+      background: #ffffff;
       flex-shrink: 0;
     }
 
     .sidebar-dev-btn {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       width: 100%;
-      padding: 9px 12px;
+      padding: 7px 10px;
       background: #eff6ff;
       border: 1px solid #bfdbfe;
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
       text-align: right;
     }
     .sidebar-dev-btn:hover {
       background: #dbeafe;
       border-color: #93c5fd;
-      transform: translateY(-1px);
     }
     .sidebar-dev-btn .dev-code-icon {
       background: #1d4ed8;
       color: #ffffff;
       font-family: monospace;
       font-weight: 800;
-      font-size: 13px;
-      padding: 4px 8px;
-      border-radius: 6px;
+      font-size: 11.5px;
+      padding: 3px 6px;
+      border-radius: 5px;
     }
     .sidebar-dev-btn .dev-btn-text {
       flex: 1;
@@ -312,12 +316,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex-direction: column;
     }
     .sidebar-dev-btn .dev-main-title {
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 800;
       color: #1e3a8a;
     }
     .sidebar-dev-btn .dev-sub-title {
-      font-size: 11px;
+      font-size: 10px;
       color: #2563eb;
       font-weight: 600;
     }
@@ -326,22 +330,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       width: 100%;
-      padding: 9px 12px;
+      padding: 7px 10px;
       background: linear-gradient(135deg, #1d4ed8, #2563eb);
       color: #ffffff;
       border: none;
-      border-radius: var(--radius-md);
-      font-size: 13px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 6px rgba(37,99,235,0.2);
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 4px rgba(37,99,235,0.2);
     }
-    .new-chat-btn:hover {
-      background: linear-gradient(135deg, #1e40af, #1d4ed8);
-    }
+    .new-chat-btn:hover { background: linear-gradient(135deg, #1e40af, #1d4ed8); }
 
     .search-box {
       position: relative;
@@ -349,8 +351,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     .search-box input {
       width: 100%;
-      padding: 7px 32px 7px 10px;
-      font-size: 12.5px;
+      padding: 6px 28px 6px 8px;
+      font-size: 11.5px;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       background: #f8fafc;
@@ -363,45 +365,41 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     .search-box .search-icon {
       position: absolute;
-      right: 10px;
+      right: 9px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-muted);
       pointer-events: none;
     }
 
-    /* منطقة سكرول قائمة الملاحظات: تم ضبط القياسات لتأخذ كامل الارتفاع المتبقي بانسيابية */
+    /* منطقة عرض بطاقات الملاحظات بكامل السعة */
     .notes-list {
-      flex: 1 1 0%;
-      min-height: 0;
-      max-height: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 10px 12px;
+      padding: 8px 10px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
+      flex: 1;
     }
 
     .empty-notes {
       text-align: center;
       color: var(--text-muted);
-      font-size: 12.5px;
-      margin: 30px 10px;
+      font-size: 11.5px;
+      margin: 24px 8px;
       line-height: 1.6;
     }
 
     .note-card {
       background: #f8fafc;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      padding: 7px 9px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
       flex-shrink: 0;
     }
     .note-card:hover {
@@ -424,7 +422,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       gap: 6px;
     }
     .note-title {
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 700;
       color: var(--text-main);
       white-space: nowrap;
@@ -435,7 +433,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .note-card-actions {
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
       opacity: 0.7;
     }
     .note-card:hover .note-card-actions { opacity: 1; }
@@ -445,9 +443,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border: none;
       color: #64748b;
       cursor: pointer;
-      font-size: 11px;
-      padding: 2px 4px;
-      border-radius: 4px;
+      font-size: 10px;
+      padding: 2px 3px;
+      border-radius: 3px;
     }
     .note-action-btn:hover { background: #e2e8f0; color: #0f172a; }
     .note-action-btn.delete-btn:hover { background: #fee2e2; color: #dc2626; }
@@ -457,18 +455,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 10.5px;
+      font-size: 9.5px;
       color: var(--text-muted);
     }
 
     .sidebar-footer {
-      padding: 10px 14px;
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
       background: #f8fafc;
+      padding: 8px 12px;
       border-top: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11.5px;
+      font-size: 10.5px;
       color: var(--text-muted);
       flex-shrink: 0;
     }
@@ -476,16 +477,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: none;
       border: none;
       color: #dc2626;
-      font-size: 11.5px;
+      font-size: 10.5px;
       cursor: pointer;
       font-weight: 600;
-      padding: 2px 5px;
+      padding: 2px 4px;
       border-radius: 4px;
     }
     .clear-all-notes-btn:hover { background: #fee2e2; }
 
     /* ============================================================
-       واجهة المحادثة الرئيسية (Chat View) وتوزيع السكرول
+       منطقة المحادثة الرئيسية بتنسيق خطوط مدمج ومريح للكمبيوتر
     ============================================================ */
     .main-wrapper {
       flex: 1 1 0%;
@@ -502,20 +503,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     header {
       background: #ffffff;
       border-bottom: 1px solid var(--border-color);
-      padding: 10px 20px;
+      padding: 7px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
       z-index: 10;
       flex-shrink: 0;
-      height: 54px;
+      height: 48px;
     }
 
     .header-right, .header-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .menu-toggle-btn {
@@ -523,28 +524,27 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #1e293b;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      padding: 6px 12px;
-      font-size: 12.5px;
+      padding: 5px 10px;
+      font-size: 11.5px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: background 0.15s;
+      gap: 5px;
     }
     .menu-toggle-btn:hover { background: #e2e8f0; }
 
     .brand-title h1 {
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 800;
       color: #1e3a8a;
     }
 
     .status-badge {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 16px;
+      padding: 3px 8px;
+      border-radius: 14px;
       background: #f1f5f9;
       color: #475569;
       border: 1px solid #e2e8f0;
@@ -564,16 +564,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border-color: #a7f3d0;
     }
 
-    /* حاوية المحادثة: تم ضبط flex-1 و min-height لمنع قص السكرول على شاشات الكمبيوتر */
     .chat-container {
       flex: 1 1 0%;
       min-height: 0;
-      max-width: 900px;
+      max-width: 860px;
       width: 100%;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      padding: 16px 20px;
+      padding: 12px 18px;
       overflow: hidden;
     }
 
@@ -582,10 +581,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 4px 8px 18px 8px;
+      padding: 4px 6px 16px 6px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 13px;
       scroll-behavior: smooth;
     }
 
@@ -596,7 +595,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       animation: fadeIn 0.2s ease-out;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
+      from { opacity: 0; transform: translateY(3px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
@@ -604,14 +603,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .msg-wrapper.bot {
       align-self: flex-end;
       width: 100%;
-      max-width: 90%;
+      max-width: 92%;
     }
 
     .msg-bubble {
-      padding: 12px 18px;
-      border-radius: 14px;
-      font-size: 14px;
-      line-height: 1.8;
+      padding: 10px 15px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      line-height: 1.68;
       position: relative;
       word-break: break-word;
       overflow-wrap: break-word;
@@ -620,8 +619,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .msg-wrapper.user .msg-bubble {
       background: linear-gradient(135deg, #1d4ed8, #2563eb);
       color: #ffffff;
-      border-bottom-left-radius: 4px;
-      box-shadow: 0 2px 8px rgba(37,99,235,0.18);
+      border-bottom-left-radius: 3px;
+      box-shadow: 0 1px 6px rgba(37,99,235,0.16);
       font-weight: 600;
     }
 
@@ -629,55 +628,52 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: #ffffff;
       color: #1e293b;
       border: 1px solid #e2e8f0;
-      border-bottom-right-radius: 4px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+      border-bottom-right-radius: 3px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
 
     .welcome-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: var(--radius-md);
-      padding: 16px 20px;
-      line-height: 1.8;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+      padding: 13px 16px;
+      line-height: 1.7;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.02);
     }
     .welcome-card h3 {
-      font-size: 16px;
+      font-size: 14.5px;
       color: #1e3a8a;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
     .welcome-card p {
-      font-size: 13.5px;
+      font-size: 13px;
       color: #334155;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
     }
     .welcome-card .welcome-hint {
-      font-size: 12px;
+      font-size: 11.5px;
       color: #64748b;
-      margin-top: 8px;
-      padding-top: 8px;
+      margin-top: 6px;
+      padding-top: 6px;
       border-top: 1px dashed #e2e8f0;
     }
 
     .typing-box {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 4px 0;
+      gap: 6px;
+      padding: 3px 0;
       color: #1d4ed8;
       font-weight: 700;
-      font-size: 13.5px;
+      font-size: 13px;
     }
-    .typing-dots {
-      display: inline-flex;
-      gap: 3px;
-    }
+    .typing-dots { display: inline-flex; gap: 3px; }
     .typing-dots span {
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
       background: #2563eb;
       border-radius: 50%;
       animation: bounce 1.2s infinite ease-in-out;
@@ -687,57 +683,54 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes bounce {
       0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-      40% { transform: translateY(-5px); opacity: 1; }
+      40% { transform: translateY(-4px); opacity: 1; }
     }
 
     .streaming-cursor {
       display: inline-block;
-      width: 7px;
-      height: 15px;
+      width: 6px;
+      height: 14px;
       background: #1d4ed8;
       animation: blink 0.8s infinite;
       border-radius: 1px;
     }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-    .msg-content { line-height: 1.8; }
-    .msg-content p { margin-bottom: 8px; }
+    .msg-content { line-height: 1.68; font-size: 13.5px; }
+    .msg-content p { margin-bottom: 6px; }
     .msg-content p:last-child { margin-bottom: 0; }
-    .msg-content h1, .msg-content h2, .msg-content h3 { color: #0f172a; margin: 12px 0 6px 0; font-weight: 800; }
-    .msg-content h1 { font-size: 16.5px; }
-    .msg-content h2 { font-size: 15px; }
-    .msg-content h3 { font-size: 14px; }
-    .msg-content ul, .msg-content ol { margin: 6px 18px 10px; }
+    .msg-content h1, .msg-content h2, .msg-content h3 { color: #0f172a; margin: 10px 0 5px 0; font-weight: 800; }
+    .msg-content h1 { font-size: 15px; }
+    .msg-content h2 { font-size: 14px; }
+    .msg-content h3 { font-size: 13.5px; }
+    .msg-content ul, .msg-content ol { margin: 5px 16px 8px; }
     .msg-content li { margin-bottom: 3px; }
     .msg-content blockquote {
       border-right: 3px solid var(--primary);
-      padding: 4px 12px;
+      padding: 3px 10px;
       background: #f8fafc;
       color: #475569;
-      margin: 8px 0;
-      border-radius: 0 6px 6px 0;
+      margin: 6px 0;
+      border-radius: 0 5px 5px 0;
     }
     .msg-content table {
       border-collapse: collapse;
       width: 100%;
-      margin: 10px 0;
-      font-size: 13px;
+      margin: 8px 0;
+      font-size: 12.5px;
       background: #fff;
     }
     .msg-content th, .msg-content td {
       border: 1px solid #e2e8f0;
-      padding: 6px 10px;
+      padding: 5px 8px;
       text-align: right;
     }
     .msg-content th { background: #f1f5f9; font-weight: 700; }
 
     .code-container {
       position: relative;
-      margin: 10px 0;
-      border-radius: 8px;
+      margin: 8px 0;
+      border-radius: 7px;
       overflow: hidden;
       background: #282c34;
       border: 1px solid #3e4451;
@@ -746,21 +739,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     .code-header {
       background: #21252b;
-      padding: 5px 12px;
+      padding: 4px 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       font-family: monospace;
-      font-size: 11px;
+      font-size: 10.5px;
       color: #abb2bf;
     }
     .code-copy-btn {
       background: rgba(255,255,255,0.1);
       border: 1px solid rgba(255,255,255,0.2);
       color: #e5e7eb;
-      font-size: 10.5px;
-      padding: 2px 7px;
+      font-size: 10px;
+      padding: 2px 6px;
       border-radius: 4px;
       cursor: pointer;
       font-family: 'Cairo', sans-serif;
@@ -769,9 +762,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .code-copy-btn.copied { background: #166534; color: #bbf7d0; border-color: #22c55e; }
 
     pre code.hljs {
-      padding: 10px 12px;
+      padding: 8px 10px;
       font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 13px;
+      font-size: 12.5px;
       line-height: 1.5;
       overflow-x: auto;
     }
@@ -779,33 +772,33 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .msg-toolbar {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 6px;
+      gap: 5px;
+      margin-top: 5px;
       padding: 0 2px;
     }
     .msg-btn {
       background: #f1f5f9;
       border: 1px solid #e2e8f0;
       color: #475569;
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 6px;
+      font-size: 10.5px;
+      padding: 2px 7px;
+      border-radius: 5px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
       font-weight: 600;
     }
     .msg-btn:hover { background: #e2e8f0; color: #0f172a; }
     .msg-btn.copied { background: #dcfce7; color: #15803d; border-color: #86efac; }
 
-    /* حقل الإدخال العائم */
+    /* حقل الإدخال المدمج والخفيف */
     .input-section {
       background: #ffffff;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 8px 12px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       display: flex;
       align-items: flex-end;
       gap: 8px;
@@ -814,13 +807,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     textarea#questionInput {
       flex: 1;
-      padding: 8px 10px;
+      padding: 6px 8px;
       border: none;
       outline: none;
       resize: none;
-      font-size: 14.5px;
-      max-height: 130px;
-      min-height: 42px;
+      font-size: 13.5px;
+      max-height: 110px;
+      min-height: 38px;
       line-height: 1.5;
       color: var(--text-main);
       background: transparent;
@@ -837,15 +830,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: linear-gradient(135deg, #1d4ed8, #2563eb);
       color: white;
       border: none;
-      border-radius: 10px;
-      padding: 9px 18px;
-      font-size: 13.5px;
+      border-radius: 8px;
+      padding: 7px 15px;
+      font-size: 12.5px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
-      box-shadow: 0 2px 6px rgba(37,99,235,0.2);
+      gap: 5px;
+      box-shadow: 0 1px 4px rgba(37,99,235,0.2);
       white-space: nowrap;
     }
     .btn-send:hover { background: linear-gradient(135deg, #1e40af, #1d4ed8); }
@@ -854,14 +847,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: #dc2626;
       color: white;
       border: none;
-      border-radius: 10px;
-      padding: 9px 18px;
-      font-size: 13.5px;
+      border-radius: 8px;
+      padding: 7px 15px;
+      font-size: 12.5px;
       font-weight: 700;
       cursor: pointer;
       display: none;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       white-space: nowrap;
     }
     .btn-stop:hover { background: #b91c1c; }
@@ -881,7 +874,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: fixed;
       inset: 0;
       background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(3px);
       z-index: 200;
       align-items: center;
       justify-content: center;
@@ -892,82 +885,82 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .dev-modal {
       background: #ffffff;
       width: 100%;
-      max-width: 440px;
-      border-radius: var(--radius-lg);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      max-width: 420px;
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
       overflow: hidden;
       animation: modalPop 0.2s ease-out;
       border: 1px solid var(--border-color);
     }
     @keyframes modalPop {
-      from { transform: scale(0.93); opacity: 0; }
+      from { transform: scale(0.94); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
 
     .dev-modal-header {
       background: linear-gradient(135deg, #1e3a8a, #2563eb);
       color: white;
-      padding: 20px 18px;
+      padding: 18px 16px;
       text-align: center;
       position: relative;
     }
     .dev-modal-header .code-badge-large {
       font-family: monospace;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 900;
       background: #ffffff;
       color: #1d4ed8;
-      width: 54px;
-      height: 54px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 8px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      margin: 0 auto 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
     }
-    .dev-modal-header h3 { font-size: 18px; font-weight: 800; }
-    .dev-modal-header p { font-size: 12.5px; opacity: 0.9; margin-top: 3px; }
+    .dev-modal-header h3 { font-size: 16.5px; font-weight: 800; }
+    .dev-modal-header p { font-size: 12px; opacity: 0.9; margin-top: 2px; }
     .modal-close-btn {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 10px;
+      left: 10px;
       background: rgba(255,255,255,0.2);
       border: none;
       color: white;
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       border-radius: 50%;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .dev-modal-body {
-      padding: 16px 18px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      font-size: 13px;
-      line-height: 1.7;
+      gap: 10px;
+      font-size: 12.5px;
+      line-height: 1.65;
       color: #334155;
     }
     .skill-tags {
       display: flex;
       flex-wrap: wrap;
       gap: 5px;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     .skill-tag {
       background: #eff6ff;
       color: #1d4ed8;
       border: 1px solid #bfdbfe;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11.5px;
+      padding: 2px 7px;
+      border-radius: 8px;
+      font-size: 11px;
       font-weight: 700;
     }
     .dev-modal-footer {
-      padding: 12px 18px;
+      padding: 11px 16px;
       background: #f8fafc;
       border-top: 1px solid var(--border-color);
       display: flex;
@@ -976,19 +969,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .cv-btn-large {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: #1d4ed8;
       color: white;
       text-decoration: none;
-      padding: 9px 20px;
-      border-radius: var(--radius-md);
-      font-size: 13.5px;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
       font-weight: 700;
     }
     .cv-btn-large:hover { background: #1e40af; }
 
     /* ============================================================
-       قواعد التجاوب المخصصة للهواتف فقط
+       قواعد التجاوب المخصصة للهواتف
     ============================================================ */
     @media (max-width: 768px) {
       .sidebar {
@@ -1006,21 +999,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .backdrop-overlay.show { display: block; }
 
       header {
-        padding: 8px 12px;
-        height: 50px;
+        padding: 7px 12px;
+        height: 46px;
       }
-      .brand-title h1 { font-size: 15px; }
-      .menu-toggle-btn { padding: 5px 9px; font-size: 12px; }
-      .status-badge { padding: 3px 8px; font-size: 11px; }
+      .brand-title h1 { font-size: 14.5px; }
+      .menu-toggle-btn { padding: 4px 8px; font-size: 11.5px; }
+      .status-badge { padding: 3px 7px; font-size: 10.5px; }
 
-      .chat-container { padding: 10px; }
+      .chat-container { padding: 8px; }
       .msg-wrapper { max-width: 94%; }
       .msg-wrapper.bot { max-width: 98%; }
-      .msg-bubble { padding: 10px 14px; font-size: 13.5px; }
+      .msg-bubble { padding: 9px 12px; font-size: 13px; }
 
-      .input-section { padding: 6px 10px; }
-      textarea#questionInput { font-size: 13.5px; min-height: 40px; }
-      .btn-send, .btn-stop { padding: 8px 14px; font-size: 13px; }
+      .input-section { padding: 5px 8px; }
+      textarea#questionInput { font-size: 13px; min-height: 38px; }
+      .btn-send, .btn-stop { padding: 7px 12px; font-size: 12px; }
     }
   </style>
 </head>
@@ -1067,7 +1060,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </aside>
 
-  <!-- الواجهة الرئيسية -->
+  <!-- الواجهة الرئيسية للمحادثة -->
   <div class="main-wrapper">
     <header>
       <div class="header-right">
@@ -1144,7 +1137,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- منطق JavaScript المحدث بعد إزالة الصوت وضبط التمرير والتجاوب -->
   <script>
     marked.setOptions({ gfm: true, breaks: true });
 
@@ -1189,13 +1181,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       } catch (e) {}
     }
 
-    // إدارة فتح وإغلاق القائمة الجانبية بذكاء بين الكمبيوتر والموبايل
     function handleSidebarToggle() {
       const sidebar = document.getElementById("sidebar");
       const overlay = document.getElementById("backdropOverlay");
 
       if (window.innerWidth <= 768) {
-        // في الموبايل تعمل كـ Drawer عائم
         const isOpen = sidebar.classList.contains("open");
         if (isOpen) {
           sidebar.classList.remove("open");
@@ -1205,7 +1195,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           overlay.classList.add("show");
         }
       } else {
-        // في الكمبيوتر تطوى وتتسع بسلاسة دون تغطية الشاشة بطبقة معتمة
         sidebar.classList.toggle("collapsed");
       }
     }
@@ -1271,7 +1260,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
       bubble.appendChild(content);
 
-      // أزرار الرسالة للبوت: زر النسخ السريع فقط بعد حذف ميزة الصوت
       if (role === "bot") {
         const toolbar = document.createElement("div");
         toolbar.className = "msg-toolbar";
@@ -1335,9 +1323,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       area.scrollTop = area.scrollHeight;
     }
 
-    // ============================================================
-    // إدارة دفتر الملاحظات وسكرول القائمة
-    // ============================================================
     function renderNotesList() {
       const container = document.getElementById("notesListContainer");
       container.innerHTML = "";
@@ -1418,7 +1403,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (!currentHistory || currentHistory.length === 0) return;
 
       const firstUserMsg = currentHistory.find(m => m.role === "user")?.parts?.[0]?.text || "محادثة جديدة";
-      const cleanTitle = firstUserMsg.length > 30 ? firstUserMsg.substring(0, 30) + "..." : firstUserMsg;
+      const cleanTitle = firstUserMsg.length > 28 ? firstUserMsg.substring(0, 28) + "..." : firstUserMsg;
       const nowStr = new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
 
       if (currentNoteId) {
@@ -1497,7 +1482,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const format = prompt("اختر صيغة التصدير:\n1 = ملف Markdown (.md)\n2 = ملف نصي (.txt)\n3 = طباعة", "1");
       if (!format) return;
 
-      let content = `# ${n.title}\nتاريخ: ${n.date}\nمطور النظام: عمرو الشرافي\n\n---\n\n`;
+      let content = `# ${n.title}\nتاريخ: ${n.date}\nمساعد الذكاء الاصطناعي: Amro AI\n\n---\n\n`;
       n.history.forEach(m => {
         const sender = m.role === "user" ? "👤 أنت" : "✨ Amro AI";
         const text = m.parts?.[0]?.text || "";
@@ -1592,16 +1577,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       area.innerHTML = `
         <div class="welcome-card">
           <h3><span>✨</span><span>أهلاً بك في Amro AI CHAT</span></h3>
-          <p>أنا مساعدك الذكي، طُوِّرت بواسطة المهندس <strong>عمرو الشرافي</strong>.</p>
-          <p>جاهز لمساعدتك في الإجابة على استفساراتك، كتابة الأكواد، وتنسيق الأفكار بكل سرعة.</p>
-          <div class="welcome-hint">💬 تفضل بكتابة سؤالك في الأسفل للبدء.</div>
+          <p>أنا مساعدك الذكي، جاهز للإجابة عن أسئلتك، كتابة الأكواد، وتنسيق الأفكار بكل سرعة ودقة.</p>
+          <div class="welcome-hint">💬 تفضل بكتابة استفسارك في الأسفل للبدء مباشرة.</div>
         </div>
       `;
     }
 
-    // ============================================================
-    // إرسال السؤال
-    // ============================================================
     async function handleSendMessage() {
       if (isGenerating) return;
 
@@ -1691,14 +1672,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       } catch (err) {
         if (err.name === "AbortError") {
           if (fullAnswer) {
-            botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer) + `<div style="font-size: 11px; color: #dc2626; margin-top: 6px;">⏹️ (تم إيقاف الرد)</div>`;
+            botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer) + `<div style="font-size: 11px; color: #dc2626; margin-top: 5px;">⏹️ (تم إيقاف الرد)</div>`;
             botElements.wrapper.dataset.fullText = fullAnswer;
             enhanceCodeBlocks(botElements.wrapper);
             currentHistory.push({ role: "user", parts: [{ text: question }] });
             currentHistory.push({ role: "model", parts: [{ text: fullAnswer }] });
             autoSaveCurrentChatToNotes();
           } else {
-            botElements.content.innerHTML = `<span style="color: #64748b; font-size: 12px;">⏹️ تم إيقاف توليد الإجابة.</span>`;
+            botElements.content.innerHTML = `<span style="color: #64748b; font-size: 11.5px;">⏹️ تم إيقاف توليد الإجابة.</span>`;
           }
           setStatus("متوقف ⏹️", "ready");
         } else {
@@ -1729,7 +1710,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const textarea = document.getElementById("questionInput");
     function adjustTextareaHeight(el) {
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 130) + "px";
+      el.style.height = Math.min(el.scrollHeight, 110) + "px";
     }
     textarea.addEventListener("input", function() { adjustTextareaHeight(this); });
 
