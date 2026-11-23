@@ -8,7 +8,6 @@ from collections import defaultdict
 from flask import Flask, jsonify, render_template_string, request, Response, stream_with_context
 import requests
 
-# تحميل متغيرات البيئة من ملف .env محلياً إن كانت المكتبة متوفرة
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -21,13 +20,7 @@ app = Flask(__name__)
 # 1. إعدادات الأمان ومعدل الطلبات (Rate Limiting)
 # ==========================================
 class ThreadSafeRateLimiter:
-    """
-    نظام تحديد معدل الطلبات (Rate Limiter) متقدم وخفيف ومبني في الذاكرة:
-    - يحدد عدد الطلبات لكل عنوان IP خلال نافذة زمنية مدتها دقيقة.
-    - حماية من تدفق الطلبات المتتالية السريعة (Burst Limit).
-    - آمن لتعدد الخيوط (Thread-Safe).
-    """
-    def __init__(self, requests_per_minute=30, burst_limit=8, burst_window=10):
+    def __init__(self, requests_per_minute=35, burst_limit=10, burst_window=10):
         self.rpm = requests_per_minute
         self.burst_limit = burst_limit
         self.burst_window = burst_window
@@ -54,7 +47,6 @@ class ThreadSafeRateLimiter:
 rate_limiter = ThreadSafeRateLimiter(requests_per_minute=35, burst_limit=10, burst_window=10)
 
 def get_client_ip():
-    """استخراج عنوان IP الحقيقي حتى مع وجود خوادم وسيطة (Proxies / CDN)"""
     if request.headers.get("X-Forwarded-For"):
         return request.headers.get("X-Forwarded-For").split(",")[0].strip()
     if request.headers.get("X-Real-IP"):
@@ -62,7 +54,6 @@ def get_client_ip():
     return request.remote_addr or "127.0.0.1"
 
 def get_api_key():
-    """الحصول على مفتاح الـ API والتحقق من سلامته دون تسريبه"""
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     invalid_keys = ["", "ضع_مفتاح_Gemini_API_هنا", "your_new_api_key_here"]
     if not key or key in invalid_keys:
@@ -93,7 +84,6 @@ SYSTEM_INSTRUCTION_TEXT = (
 # 3. التحقق من المدخلات وتطهيرها (Sanitization)
 # ==========================================
 def validate_and_sanitize_payload(data):
-    """التحقق من سلامة البيانات المرسلة وتطهيرها لحماية الخادم"""
     if not isinstance(data, dict):
         return None, "صيغة الطلب غير صالحة."
 
@@ -136,7 +126,7 @@ def validate_and_sanitize_payload(data):
     return (question, clean_history), None
 
 # ==========================================
-# 4. الواجهة الأمامية المتجاوبة والخفيفة
+# 4. الواجهة الأمامية المتطورة والمتجاوبة
 # ==========================================
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -165,9 +155,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       --text-main: #0f172a;
       --text-muted: #64748b;
       --border-color: #e2e8f0;
-      --sidebar-width: 300px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-      --shadow-md: 0 4px 14px rgba(0,0,0,0.07);
+      --sidebar-width: 310px;
       --radius-lg: 16px;
       --radius-md: 12px;
       --radius-sm: 8px;
@@ -179,30 +167,66 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
     }
 
-    body {
-      background: var(--bg-main);
-      color: var(--text-main);
+    /* تحسين وتخصيص أشرطة التمرير وإخفاء أسهم ويندوز المزعجة */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    ::-webkit-scrollbar-button {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+
+    html, body {
+      height: 100%;
       height: 100vh;
       height: 100dvh;
-      display: flex;
+      width: 100%;
+      background: var(--bg-main);
+      color: var(--text-main);
       overflow: hidden;
+      display: flex;
     }
 
     /* ============================================================
-       الشريط الجانبي (Sidebar)
+       الشريط الجانبي (Sidebar) على الكمبيوتر والموبايل
     ============================================================ */
     .sidebar {
       width: var(--sidebar-width);
+      height: 100%;
+      height: 100vh;
+      height: 100dvh;
       background: var(--bg-card);
       border-left: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
-      height: 100%;
+      flex-shrink: 0;
       z-index: 100;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: -2px 0 10px rgba(0,0,0,0.03);
+      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    /* عند تصغير القائمة في الكمبيوتر */
+    .sidebar.collapsed {
+      width: 0 !important;
+      border-left: none !important;
+      visibility: hidden;
+      pointer-events: none;
     }
 
     .sidebar-header {
@@ -212,6 +236,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .sidebar-header h2 {
@@ -251,30 +276,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       gap: 10px;
       border-bottom: 1px solid var(--border-color);
       background: #fff;
+      flex-shrink: 0;
     }
 
-    .new-chat-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 9px 12px;
-      background: linear-gradient(135deg, #1d4ed8, #2563eb);
-      color: #ffffff;
-      border: none;
-      border-radius: var(--radius-md);
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 6px rgba(37,99,235,0.2);
-    }
-    .new-chat-btn:hover {
-      background: linear-gradient(135deg, #1e40af, #1d4ed8);
-    }
-
-    /* زر المطور في القائمة الجانبية بأيقونة </> */
     .sidebar-dev-btn {
       display: flex;
       align-items: center;
@@ -301,7 +305,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       font-size: 13px;
       padding: 4px 8px;
       border-radius: 6px;
-      letter-spacing: -1px;
     }
     .sidebar-dev-btn .dev-btn-text {
       flex: 1;
@@ -317,6 +320,27 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       font-size: 11px;
       color: #2563eb;
       font-weight: 600;
+    }
+
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 12px;
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(37,99,235,0.2);
+    }
+    .new-chat-btn:hover {
+      background: linear-gradient(135deg, #1e40af, #1d4ed8);
     }
 
     .search-box {
@@ -347,13 +371,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       pointer-events: none;
     }
 
+    /* منطقة سكرول قائمة الملاحظات: تم ضبط القياسات لتأخذ كامل الارتفاع المتبقي بانسيابية */
     .notes-list {
-      flex: 1;
+      flex: 1 1 0%;
+      min-height: 0;
+      max-height: 100%;
       overflow-y: auto;
-      padding: 10px;
+      overflow-x: hidden;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
-      gap: 7px;
+      gap: 8px;
     }
 
     .empty-notes {
@@ -368,12 +396,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: #f8fafc;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      padding: 8px 10px;
+      padding: 9px 11px;
       cursor: pointer;
       transition: all 0.2s ease;
       display: flex;
       flex-direction: column;
       gap: 5px;
+      flex-shrink: 0;
     }
     .note-card:hover {
       border-color: #93c5fd;
@@ -433,20 +462,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .sidebar-footer {
-      padding: 10px 12px;
+      padding: 10px 14px;
       background: #f8fafc;
       border-top: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 11.5px;
       color: var(--text-muted);
+      flex-shrink: 0;
     }
     .clear-all-notes-btn {
       background: none;
       border: none;
       color: #dc2626;
-      font-size: 11px;
+      font-size: 11.5px;
       cursor: pointer;
       font-weight: 600;
       padding: 2px 5px;
@@ -455,34 +485,37 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .clear-all-notes-btn:hover { background: #fee2e2; }
 
     /* ============================================================
-       منطقة المحادثة الرئيسية (Main Chat View)
+       واجهة المحادثة الرئيسية (Chat View) وتوزيع السكرول
     ============================================================ */
     .main-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+      flex: 1 1 0%;
+      min-width: 0;
+      height: 100%;
       height: 100vh;
       height: 100dvh;
-      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       position: relative;
     }
 
     header {
       background: #ffffff;
       border-bottom: 1px solid var(--border-color);
-      padding: 10px 16px;
+      padding: 10px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: var(--shadow-sm);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
       z-index: 10;
-      gap: 8px;
+      flex-shrink: 0;
+      height: 54px;
     }
 
     .header-right, .header-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .menu-toggle-btn {
@@ -490,23 +523,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #1e293b;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      padding: 6px 10px;
+      padding: 6px 12px;
       font-size: 12.5px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
+      transition: background 0.15s;
     }
     .menu-toggle-btn:hover { background: #e2e8f0; }
 
-    .brand-title {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
     .brand-title h1 {
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 800;
       color: #1e3a8a;
     }
@@ -514,7 +543,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .status-badge {
       font-size: 11.5px;
       font-weight: 700;
-      padding: 4px 9px;
+      padding: 4px 10px;
       border-radius: 16px;
       background: #f1f5f9;
       color: #475569;
@@ -535,31 +564,35 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border-color: #a7f3d0;
     }
 
+    /* حاوية المحادثة: تم ضبط flex-1 و min-height لمنع قص السكرول على شاشات الكمبيوتر */
     .chat-container {
-      flex: 1;
-      max-width: 860px;
+      flex: 1 1 0%;
+      min-height: 0;
+      max-width: 900px;
       width: 100%;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      padding: 12px 14px;
+      padding: 16px 20px;
       overflow: hidden;
     }
 
     .chat-messages {
-      flex: 1;
+      flex: 1 1 0%;
+      min-height: 0;
       overflow-y: auto;
-      padding: 6px 4px 16px 4px;
+      overflow-x: hidden;
+      padding: 4px 8px 18px 8px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
       scroll-behavior: smooth;
     }
 
     .msg-wrapper {
       display: flex;
       flex-direction: column;
-      max-width: 85%;
+      max-width: 82%;
       animation: fadeIn 0.2s ease-out;
     }
     @keyframes fadeIn {
@@ -567,9 +600,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .msg-wrapper.user {
-      align-self: flex-start;
-    }
+    .msg-wrapper.user { align-self: flex-start; }
     .msg-wrapper.bot {
       align-self: flex-end;
       width: 100%;
@@ -577,10 +608,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .msg-bubble {
-      padding: 12px 16px;
+      padding: 12px 18px;
       border-radius: 14px;
       font-size: 14px;
-      line-height: 1.75;
+      line-height: 1.8;
       position: relative;
       word-break: break-word;
       overflow-wrap: break-word;
@@ -602,17 +633,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       box-shadow: 0 1px 4px rgba(0,0,0,0.03);
     }
 
-    /* بطاقة الترحيب الخفيفة والأنيقة */
     .welcome-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: var(--radius-md);
-      padding: 14px 18px;
+      padding: 16px 20px;
       line-height: 1.8;
       box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
     .welcome-card h3 {
-      font-size: 15.5px;
+      font-size: 16px;
       color: #1e3a8a;
       margin-bottom: 6px;
       display: flex;
@@ -632,7 +662,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border-top: 1px dashed #e2e8f0;
     }
 
-    /* مؤشر جاري الكتابة مع وميض المؤشر دون إظهار النص حرفاً بحرف */
     .typing-box {
       display: flex;
       align-items: center;
@@ -674,7 +703,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       50% { opacity: 0; }
     }
 
-    /* تنسيقات Markdown */
     .msg-content { line-height: 1.8; }
     .msg-content p { margin-bottom: 8px; }
     .msg-content p:last-child { margin-bottom: 0; }
@@ -706,7 +734,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     .msg-content th { background: #f1f5f9; font-weight: 700; }
 
-    /* كتل الأكواد البرمجية */
     .code-container {
       position: relative;
       margin: 10px 0;
@@ -749,7 +776,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       overflow-x: auto;
     }
 
-    /* أزرار الرسالة السفلية */
     .msg-toolbar {
       display: flex;
       align-items: center;
@@ -773,16 +799,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .msg-btn:hover { background: #e2e8f0; color: #0f172a; }
     .msg-btn.copied { background: #dcfce7; color: #15803d; border-color: #86efac; }
 
-    /* حقل الإدخال النظيف والمتجاوب (Floating Bar) */
+    /* حقل الإدخال العائم */
     .input-section {
       background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
-      padding: 6px 10px;
+      padding: 8px 12px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.06);
       display: flex;
       align-items: flex-end;
       gap: 8px;
+      flex-shrink: 0;
     }
 
     textarea#questionInput {
@@ -791,9 +818,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border: none;
       outline: none;
       resize: none;
-      font-size: 14px;
-      max-height: 120px;
-      min-height: 40px;
+      font-size: 14.5px;
+      max-height: 130px;
+      min-height: 42px;
       line-height: 1.5;
       color: var(--text-main);
       background: transparent;
@@ -811,13 +838,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: white;
       border: none;
       border-radius: 10px;
-      padding: 9px 16px;
+      padding: 9px 18px;
       font-size: 13.5px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       box-shadow: 0 2px 6px rgba(37,99,235,0.2);
       white-space: nowrap;
     }
@@ -828,13 +855,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: white;
       border: none;
       border-radius: 10px;
-      padding: 9px 16px;
+      padding: 9px 18px;
       font-size: 13.5px;
       font-weight: 700;
       cursor: pointer;
       display: none;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       white-space: nowrap;
     }
     .btn-stop:hover { background: #b91c1c; }
@@ -961,7 +988,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .cv-btn-large:hover { background: #1e40af; }
 
     /* ============================================================
-       تجاوب الهواتف بدقة عالية (Mobile Responsiveness)
+       قواعد التجاوب المخصصة للهواتف فقط
     ============================================================ */
     @media (max-width: 768px) {
       .sidebar {
@@ -979,35 +1006,36 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .backdrop-overlay.show { display: block; }
 
       header {
-        padding: 8px 10px;
+        padding: 8px 12px;
+        height: 50px;
       }
       .brand-title h1 { font-size: 15px; }
-      .menu-toggle-btn { padding: 5px 8px; font-size: 12px; }
-      .status-badge { padding: 3px 7px; font-size: 11px; }
+      .menu-toggle-btn { padding: 5px 9px; font-size: 12px; }
+      .status-badge { padding: 3px 8px; font-size: 11px; }
 
-      .chat-container { padding: 8px; }
+      .chat-container { padding: 10px; }
       .msg-wrapper { max-width: 94%; }
       .msg-wrapper.bot { max-width: 98%; }
-      .msg-bubble { padding: 10px 12px; font-size: 13.5px; }
+      .msg-bubble { padding: 10px 14px; font-size: 13.5px; }
 
-      .input-section { padding: 5px 8px; }
-      textarea#questionInput { font-size: 13.5px; min-height: 38px; }
-      .btn-send, .btn-stop { padding: 8px 12px; font-size: 13px; }
+      .input-section { padding: 6px 10px; }
+      textarea#questionInput { font-size: 13.5px; min-height: 40px; }
+      .btn-send, .btn-stop { padding: 8px 14px; font-size: 13px; }
     }
   </style>
 </head>
 <body>
 
-  <div class="backdrop-overlay" id="backdropOverlay" onclick="toggleSidebar(false)"></div>
+  <div class="backdrop-overlay" id="backdropOverlay" onclick="closeSidebarMobile()"></div>
 
-  <!-- الشريط الجانبي (دفتر الملاحظات + زر المطور) -->
+  <!-- الشريط الجانبي (دفتر الملاحظات) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h2>
         <span>📒 دفتر الملاحظات</span>
         <span class="badge" id="notesCountBadge">0</span>
       </h2>
-      <button class="close-sidebar-btn" onclick="toggleSidebar(false)">✕</button>
+      <button class="close-sidebar-btn" onclick="closeSidebarMobile()">✕</button>
     </div>
 
     <div class="sidebar-actions">
@@ -1043,7 +1071,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="main-wrapper">
     <header>
       <div class="header-right">
-        <button class="menu-toggle-btn" onclick="toggleSidebar(true)">
+        <button class="menu-toggle-btn" onclick="handleSidebarToggle()">
           <span>📒</span>
           <span>الملاحظات</span>
         </button>
@@ -1080,7 +1108,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- نافذة المطور المنبثقة (Modal) -->
+  <!-- نافذة المطور المنبثقة -->
   <div class="modal-overlay" id="devModalOverlay" onclick="closeDevModalOnBg(event)">
     <div class="dev-modal">
       <div class="dev-modal-header">
@@ -1116,7 +1144,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- منطق JavaScript المطور -->
+  <!-- منطق JavaScript المحدث بعد إزالة الصوت وضبط التمرير والتجاوب -->
   <script>
     marked.setOptions({ gfm: true, breaks: true });
 
@@ -1161,16 +1189,32 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       } catch (e) {}
     }
 
-    function toggleSidebar(show) {
+    // إدارة فتح وإغلاق القائمة الجانبية بذكاء بين الكمبيوتر والموبايل
+    function handleSidebarToggle() {
       const sidebar = document.getElementById("sidebar");
       const overlay = document.getElementById("backdropOverlay");
-      if (show) {
-        sidebar.classList.add("open");
-        overlay.classList.add("show");
+
+      if (window.innerWidth <= 768) {
+        // في الموبايل تعمل كـ Drawer عائم
+        const isOpen = sidebar.classList.contains("open");
+        if (isOpen) {
+          sidebar.classList.remove("open");
+          overlay.classList.remove("show");
+        } else {
+          sidebar.classList.add("open");
+          overlay.classList.add("show");
+        }
       } else {
-        sidebar.classList.remove("open");
-        overlay.classList.remove("show");
+        // في الكمبيوتر تطوى وتتسع بسلاسة دون تغطية الشاشة بطبقة معتمة
+        sidebar.classList.toggle("collapsed");
       }
+    }
+
+    function closeSidebarMobile() {
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("backdropOverlay");
+      sidebar.classList.remove("open");
+      overlay.classList.remove("show");
     }
 
     function openDevModal() {
@@ -1204,48 +1248,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
     }
 
-    // تنظيف النصوص تماماً للنطق الصوتي بحيث ينطق الكلمات فقط دون الرموز التعبيرية أو الأكواد
-    function cleanTextForSpeech(raw) {
-      if (!raw) return "";
-      let t = raw;
-
-      // 1. إزالة كتل الأكواد البرمجية بالكامل
-      t = t.replace(/```[\s\S]*?```/g, " كود برمجي ");
-      t = t.replace(/`([^`]+)`/g, "$1");
-
-      // 2. إزالة روابط Markdown وروابط الويب
-      t = t.replace(/!\[.*?\]\(.*?\)/g, "");
-      t = t.replace(/\[(.*?)\]\(.*?\)/g, "$1");
-      t = t.replace(/https?:\/\/\S+/g, "");
-
-      // 3. إزالة كافة الرموز التعبيرية (Emojis) والرسومات حتى لا ينطق المتصفح "صاروخ", "مصباح", إلخ
-      t = t.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, "");
-      try {
-        t = t.replace(/\p{Extended_Pictographic}/gu, "");
-      } catch (e) {}
-
-      // 4. إزالة رموز Markdown الخاصة بالتنسيق (*, #, _, ~, >, |, -)
-      t = t.replace(/[#*_~>|]/g, " ");
-      t = t.replace(/^[-+]\s+/gm, "");
-
-      // 5. تقليل المسافات المكررة
-      t = t.replace(/\s+/g, " ").trim();
-      return t;
-    }
-
-    function speakMessage(text) {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-
-      const clean = cleanTextForSpeech(text);
-      if (!clean) return;
-
-      const utter = new SpeechSynthesisUtterance(clean);
-      utter.lang = "ar-SA";
-      utter.rate = 1.0;
-      window.speechSynthesis.speak(utter);
-    }
-
     function renderMarkdownToHtml(markdownText) {
       const rawHtml = marked.parse(markdownText || "");
       return DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target', 'rel'] });
@@ -1269,6 +1271,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
       bubble.appendChild(content);
 
+      // أزرار الرسالة للبوت: زر النسخ السريع فقط بعد حذف ميزة الصوت
       if (role === "bot") {
         const toolbar = document.createElement("div");
         toolbar.className = "msg-toolbar";
@@ -1278,15 +1281,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         copyBtn.innerHTML = "<span>📋</span><span>نسخ</span>";
         copyBtn.onclick = () => copyText(wrapper.dataset.fullText || "", copyBtn);
 
-        const speakBtn = document.createElement("button");
-        speakBtn.className = "msg-btn";
-        speakBtn.innerHTML = "<span>🔊</span><span>استماع</span>";
-        speakBtn.onclick = () => speakMessage(wrapper.dataset.fullText || "");
-
         toolbar.appendChild(copyBtn);
-        if ('speechSynthesis' in window) {
-          toolbar.appendChild(speakBtn);
-        }
         bubble.appendChild(toolbar);
       }
 
@@ -1341,7 +1336,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     // ============================================================
-    // إدارة دفتر الملاحظات
+    // إدارة دفتر الملاحظات وسكرول القائمة
     // ============================================================
     function renderNotesList() {
       const container = document.getElementById("notesListContainer");
@@ -1469,7 +1464,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderNotesList();
 
       setStatus("📒 معروضة", "ready");
-      if (window.innerWidth <= 768) toggleSidebar(false);
+      if (window.innerWidth <= 768) closeSidebarMobile();
     }
 
     function togglePinNote(event, id) {
@@ -1570,7 +1565,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderNotesList();
       setStatus("جاهز ✨", "ready");
 
-      if (window.innerWidth <= 768) toggleSidebar(false);
+      if (window.innerWidth <= 768) closeSidebarMobile();
       document.getElementById("questionInput").focus();
     }
 
@@ -1592,7 +1587,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       scrollToBottom();
     }
 
-    // رسالة ترحيبية خفيفة وأنيقة وغير متكلفة
     function showWelcomeMessage() {
       const area = document.getElementById("chatMessagesArea");
       area.innerHTML = `
@@ -1606,7 +1600,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     // ============================================================
-    // إرسال السؤال وإظهار مؤشر الكتابة الوامض دون طباعة حرفاً بحرف
+    // إرسال السؤال
     // ============================================================
     async function handleSendMessage() {
       if (isGenerating) return;
@@ -1622,7 +1616,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       setGeneratingUI(true);
       setStatus("يكتب الآن ✍️", "streaming");
 
-      // إنشاء عنصر رسالة البوت مع مؤشر "جاري الكتابة..." ووميض المؤشر فقط
       const botElements = createMessageElement("bot", "");
       botElements.content.innerHTML = `
         <div class="typing-box">
@@ -1660,7 +1653,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
 
-        // استقبال وتجميع الرد في الخلفية دون عرضه حرفاً بحرف أو كلمة بكلمة
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -1686,7 +1678,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           }
         }
 
-        // عند اكتمال الرد كلياً يتم عرضه دفعة واحدة بتنسيق Markdown والأكواد الملونة
         botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer);
         botElements.wrapper.dataset.fullText = fullAnswer;
         enhanceCodeBlocks(botElements.wrapper);
@@ -1738,7 +1729,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const textarea = document.getElementById("questionInput");
     function adjustTextareaHeight(el) {
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+      el.style.height = Math.min(el.scrollHeight, 130) + "px";
     }
     textarea.addEventListener("input", function() { adjustTextareaHeight(this); });
 
