@@ -1405,15 +1405,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
     }
 
-        card.onclick = (e) => {
-          if (e.target.closest(".note-card-actions")) return;
-          loadNoteById(note.id);
-        };
-
-        container.appendChild(card);
-      });
-    }
-
     function escapeHtml(str) {
       if (!str) return "";
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
