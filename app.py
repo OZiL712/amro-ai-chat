@@ -1761,6 +1761,7 @@ def add_security_headers(response):
 
 @app.route("/")
 @app.route("/api")
+@app.route("/api/index")
 @app.route("/api/index.py")
 def home():
     return render_template_string(HTML_TEMPLATE)
@@ -1915,6 +1916,26 @@ def chat_legacy():
             errors.append(f"{model}: {str(e)}")
 
     return jsonify({"error": "تعذر توليد الإجابة من النماذج.", "details": errors}), 503
+
+@app.route("/<path:subpath>", methods=["GET", "POST"])
+def catch_all(subpath):
+    subpath_clean = subpath.strip("/").lower()
+    if request.method == "POST":
+        if "stream" in subpath_clean:
+            return chat_stream()
+        return chat_legacy() if "chat" in subpath_clean else chat_stream()
+
+    if "chat/stream" in subpath_clean:
+        return jsonify({"status": "active", "endpoint": "chat_stream"})
+    if "chat" in subpath_clean:
+        return jsonify({"status": "active", "endpoint": "chat"})
+    return render_template_string(HTML_TEMPLATE)
+
+@app.errorhandler(404)
+def handle_404(e):
+    if request.method == "POST":
+        return chat_stream()
+    return render_template_string(HTML_TEMPLATE), 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
