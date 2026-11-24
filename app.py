@@ -1763,28 +1763,14 @@ def add_security_headers(response):
 @app.route("/api")
 @app.route("/api/index.py")
 def home():
-    if request.args.get("debug"):
-        return jsonify({
-            "path": request.path,
-            "environ": {k: str(v) for k, v in request.environ.items() if "PATH" in k or "URL" in k or "VERCEL" in k or "MATCH" in k or "ROUTE" in k or "HTTP" in k}
-        })
     return render_template_string(HTML_TEMPLATE)
 
-@app.route("/debug", methods=["GET", "POST"])
-@app.route("/api/debug", methods=["GET", "POST"])
-def debug():
-    return jsonify({
-        "path": request.path,
-        "full_path": request.full_path,
-        "method": request.method,
-        "environ_path_info": request.environ.get("PATH_INFO"),
-        "environ_matched_path": request.environ.get("HTTP_X_MATCHED_PATH"),
-        "headers": dict(request.headers)
-    })
-
-@app.route("/chat/stream", methods=["POST"])
-@app.route("/api/chat/stream", methods=["POST"])
+@app.route("/chat/stream", methods=["GET", "POST"])
+@app.route("/api/chat/stream", methods=["GET", "POST"])
 def chat_stream():
+    if request.method == "GET":
+        return jsonify({"status": "active", "endpoint": "chat_stream"})
+
     client_ip = get_client_ip()
     allowed, retry_after = rate_limiter.is_allowed(client_ip)
     if not allowed:
@@ -1878,9 +1864,12 @@ def chat_stream():
         }
     )
 
-@app.route("/chat", methods=["POST"])
-@app.route("/api/chat", methods=["POST"])
+@app.route("/chat", methods=["GET", "POST"])
+@app.route("/api/chat", methods=["GET", "POST"])
 def chat_legacy():
+    if request.method == "GET":
+        return jsonify({"status": "active", "endpoint": "chat"})
+
     client_ip = get_client_ip()
     allowed, retry_after = rate_limiter.is_allowed(client_ip)
     if not allowed:
