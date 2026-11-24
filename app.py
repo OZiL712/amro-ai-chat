@@ -1765,6 +1765,18 @@ def add_security_headers(response):
 def home():
     return render_template_string(HTML_TEMPLATE)
 
+@app.route("/debug", methods=["GET", "POST"])
+@app.route("/api/debug", methods=["GET", "POST"])
+def debug():
+    return jsonify({
+        "path": request.path,
+        "full_path": request.full_path,
+        "method": request.method,
+        "environ_path_info": request.environ.get("PATH_INFO"),
+        "environ_matched_path": request.environ.get("HTTP_X_MATCHED_PATH"),
+        "headers": dict(request.headers)
+    })
+
 @app.route("/chat/stream", methods=["POST"])
 @app.route("/api/chat/stream", methods=["POST"])
 def chat_stream():
