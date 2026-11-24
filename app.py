@@ -69,13 +69,15 @@ PRIMARY_MODELS = [
     "gemini-flash-lite-latest"
 ]
 
-# تعليمات نظام واضحة ومباشرة: التركيز التام على إجابة السؤال دون الترويج للمطور إلا عند السؤال الصريح عنه
+# تعليمات النظام: التحدث عن المطور المهندس عمرو الشرافي عند وجود سياق مناسب أو السؤال عنه
 SYSTEM_INSTRUCTION_TEXT = (
-    "أنت Amro AI ✨، مساعد ذكاء اصطناعي عربي عملي ومفيد وفائق الذكاء. "
-    "مهمتك الأساسية: أجب عن سؤال المستخدم مباشرة وبكل دقة ووضوح ولباقة، وقدّم حلولاً برمجية ومعلومات منسقة باحترافية. "
-    "توجيه هام وصارم: لا تذكر مطورك ولا تتحدث عنه أو عن إنجازاته أو سيرته الذاتية في سياق المحادثات العادية أو البرمجية إطلاقاً. "
-    "الحالة الوحيدة المسموح فيها بذكره: إذا سألك المستخدم صراحةً وبشكل مباشر: (من أنت؟ أو من طورك؟ أو من صنعك؟)، حينها فقط أجب بإيجاز واعتدال أنك Amro AI الذي طوّره المهندس عمرو الشرافي مع رابط https://amrocv.vercel.app . في غير ذلك، ركز بنسبة 100% على موضوع السؤال المطلوب فقط. "
-    "نظّم ردودك بتنسيق Markdown أنيق ومرتب بدون إطالة أو حشو غير ضروري."
+    "أنت Amro AI ✨، مساعد ذكاء اصطناعي عربي ذكي ومفيد وفائق الاحترافية.\n"
+    "طوّرك وبناك المهندس عمرو الشرافي (Eng. Amro Alshurafy)، وهو مهندس برمجيات ومطور حلول ذكاء اصطناعي وتطبيقات ويب وموبايل متميز (طالب تقنية معلومات IT - جامعة شبوة).\n"
+    "رابط معرض أعماله وسيرته الذاتية: https://amrocv.vercel.app\n\n"
+    "إرشادات التحدث عن المطور:\n"
+    "1. عندما يتطلب سياق الحديث ذلك: مثل سؤال المستخدم (من أنت؟ من طورك؟ من يقف وراء هذا المشروع؟)، أو عند مناقشة خدمات برمجية، تصميم تطبيقات Flutter أو مواقع، أو استشارات تقنية، تحدّث عن المهندس عمرو الشرافي باعتزاز ولباقة، واعرض خبراته وقدم رابط سيرته الذاتية ومعرض أعماله https://amrocv.vercel.app.\n"
+    "2. إذا تطرق الحديث إلى تصميم هذا التطبيق وسرعته ودفتر ملاحظاته، يمكنك الإشارة بذكاء إلى أن المهندس عمرو الشرافي صممه ليكون نظام محادثة سحابي فائق السرعة ومتجاوب بالكامل.\n"
+    "3. في الأسئلة العامة والعلمية والبرمجية، قدّم إجابات متقنة ومباشرة وشاملة بتنسيق Markdown مرتب وأنيق، وبأسلوب ذكي ومساعد دائماً."
 )
 
 # ==========================================
@@ -131,12 +133,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Amro AI CHAT ✨ | المساعد الذكي</title>
+  <title>Amro AI CHAT | المساعد الذكي</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
@@ -1023,29 +1026,30 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h2>
-        <span>📒 دفتر الملاحظات</span>
+        <i class="fa-solid fa-book-bookmark" style="color: #1d4ed8;"></i>
+        <span>دفتر الملاحظات</span>
         <span class="badge" id="notesCountBadge">0</span>
       </h2>
-      <button class="close-sidebar-btn" onclick="closeSidebarMobile()">✕</button>
+      <button class="close-sidebar-btn" onclick="closeSidebarMobile()"><i class="fa-solid fa-xmark"></i></button>
     </div>
 
     <div class="sidebar-actions">
-      <!-- زر المطور مع أيقونة </> -->
+      <!-- زر المطور مع أيقونة البرمجة -->
       <button class="sidebar-dev-btn" onclick="openDevModal()">
         <span class="dev-code-icon">&lt;/&gt;</span>
         <div class="dev-btn-text">
           <span class="dev-main-title">المطور (عمرو الشرافي)</span>
-          <span class="dev-sub-title">السيرة الذاتية ومعرض الأعمال ↗</span>
+          <span class="dev-sub-title">السيرة الذاتية ومعرض الأعمال <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 8.5px;"></i></span>
         </div>
       </button>
 
       <button class="new-chat-btn" onclick="createNewChat()">
-        <span>➕</span>
+        <i class="fa-solid fa-plus"></i>
         <span>محادثة جديدة</span>
       </button>
 
       <div class="search-box">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
         <input type="text" id="notesSearchInput" placeholder="بحث في الملاحظات..." oninput="handleNotesSearch()">
       </div>
     </div>
@@ -1054,7 +1058,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     <div class="sidebar-footer">
       <span id="savedStatsText">لا توجد محادثات</span>
-      <button class="clear-all-notes-btn" onclick="confirmClearAllNotes()">مسح الكل</button>
+      <button class="clear-all-notes-btn" onclick="confirmClearAllNotes()"><i class="fa-regular fa-trash-can"></i> مسح الكل</button>
     </div>
   </aside>
 
@@ -1063,16 +1067,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <header>
       <div class="header-right">
         <button class="menu-toggle-btn" onclick="handleSidebarToggle()">
-          <span>📒</span>
+          <i class="fa-solid fa-book-bookmark"></i>
           <span>الملاحظات</span>
         </button>
         <div class="brand-title">
-          <h1>Amro AI CHAT ✨</h1>
+          <h1>Amro AI CHAT <i class="fa-solid fa-wand-magic-sparkles" style="color: #2563eb; font-size: 13px;"></i></h1>
         </div>
       </div>
 
       <div class="header-left">
-        <div class="status-badge ready" id="statusBadge">جاهز ✨</div>
+        <div class="status-badge ready" id="statusBadge"><i class="fa-solid fa-circle-check"></i> جاهز</div>
       </div>
     </header>
 
@@ -1082,17 +1086,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="input-section">
         <textarea 
           id="questionInput" 
-          placeholder="اكتب سؤالك هنا... 💬"
+          placeholder="اكتب سؤالك أو استفسارك هنا..."
           rows="1"></textarea>
         
         <div class="action-controls">
           <button id="sendBtn" class="btn-send" onclick="handleSendMessage()">
             <span>إرسال</span>
-            <span>🚀</span>
+            <i class="fa-solid fa-paper-plane"></i>
           </button>
           <button id="stopBtn" class="btn-stop" onclick="handleStopGeneration()">
             <span>إيقاف</span>
-            <span>⏹️</span>
+            <i class="fa-solid fa-stop"></i>
           </button>
         </div>
       </div>
@@ -1103,20 +1107,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="modal-overlay" id="devModalOverlay" onclick="closeDevModalOnBg(event)">
     <div class="dev-modal">
       <div class="dev-modal-header">
-        <button class="modal-close-btn" onclick="closeDevModal()">✕</button>
+        <button class="modal-close-btn" onclick="closeDevModal()"><i class="fa-solid fa-xmark"></i></button>
         <div class="code-badge-large">&lt;/&gt;</div>
         <h3>عمرو الشرافي | Amro Alshurafy</h3>
         <p>Software Engineer & AI Solutions Developer</p>
       </div>
       <div class="dev-modal-body">
         <p>
-          مرحباً بك! أنا <strong>عمرو الشرافي</strong>، مطور برمجيات وتطبيقات وويب وحلول ذكاء اصطناعي.
+          مرحباً بك! أنا <strong>عمرو الشرافي</strong>، مهندس ومطور برمجيات وتطبيقات وويب وحلول ذكاء اصطناعي.
         </p>
         <p>
-          🎓 <strong>التعليم:</strong> طالب تقنية معلومات (IT) — جامعة شبوة.
+          <i class="fa-solid fa-graduation-cap" style="color: #1d4ed8;"></i> <strong>التعليم:</strong> طالب تقنية معلومات (IT) — جامعة شبوة.
         </p>
         <div>
-          <strong>💼 المهارات والتقنيات:</strong>
+          <i class="fa-solid fa-layer-group" style="color: #1d4ed8;"></i> <strong>المهارات والتقنيات:</strong>
           <div class="skill-tags">
             <span class="skill-tag">Flutter & Dart</span>
             <span class="skill-tag">React.js</span>
@@ -1128,8 +1132,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
       <div class="dev-modal-footer">
         <a class="cv-btn-large" href="https://amrocv.vercel.app" target="_blank" rel="noopener noreferrer">
-          <span>🌐 فتح السيرة الذاتية ومعرض الأعمال</span>
-          <span>↗</span>
+          <i class="fa-solid fa-globe"></i>
+          <span>فتح السيرة الذاتية ومعرض الأعمال</span>
+          <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 11px;"></i>
         </a>
       </div>
     </div>
@@ -1214,13 +1219,23 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (e.target.id === "devModalOverlay") closeDevModal();
     }
 
-    function setStatus(text, type = "ready") {
+    function setStatus(text, type = "ready", iconClass = "") {
       const badge = document.getElementById("statusBadge");
-      badge.textContent = text;
+      let icon = "";
+      if (iconClass) {
+        icon = `<i class="${iconClass}"></i> `;
+      } else if (type === "streaming") {
+        icon = '<i class="fa-solid fa-pen-nib fa-bounce"></i> ';
+      } else if (type === "ready") {
+        icon = '<i class="fa-solid fa-circle-check"></i> ';
+      } else {
+        icon = '<i class="fa-solid fa-bookmark"></i> ';
+      }
+      badge.innerHTML = icon + escapeHtml(text);
       badge.className = "status-badge " + type;
     }
 
-    function copyText(text, btnElement, successMsg = "✅ تم النسخ!") {
+    function copyText(text, btnElement, successMsg = '<i class="fa-solid fa-check"></i> تم النسخ!') {
       const origText = btnElement.innerHTML;
       navigator.clipboard.writeText(text).then(() => {
         btnElement.innerHTML = successMsg;
@@ -1264,7 +1279,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         const copyBtn = document.createElement("button");
         copyBtn.className = "msg-btn";
-        copyBtn.innerHTML = "<span>📋</span><span>نسخ</span>";
+        copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> <span>نسخ</span>';
         copyBtn.onclick = () => copyText(wrapper.dataset.fullText || "", copyBtn);
 
         toolbar.appendChild(copyBtn);
@@ -1306,8 +1321,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         const copyBtn = document.createElement("button");
         copyBtn.className = "code-copy-btn";
-        copyBtn.textContent = "📋 نسخ الكود";
-        copyBtn.onclick = () => copyText(codeEl.innerText, copyBtn, "✅ نُسخ!");
+        copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> نسخ الكود';
+        copyBtn.onclick = () => copyText(codeEl.innerText, copyBtn, '<i class="fa-solid fa-check"></i> نُسخ!');
 
         header.appendChild(copyBtn);
         pre.parentNode.insertBefore(codeContainer, pre);
@@ -1350,7 +1365,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (filtered.length === 0) {
         container.innerHTML = `
           <div class="empty-notes">
-            ${searchTerm.trim() ? "لا توجد نتائج مطابقة 🔍" : "دفتر الملاحظات فارغ 📭<br>ابدأ بمحادثة وستُحفظ هنا تلقائياً."}
+            ${searchTerm.trim() ? '<i class="fa-solid fa-magnifying-glass" style="font-size: 20px; display:block; margin-bottom:6px; color:#94a3b8;"></i> لا توجد نتائج مطابقة' : '<i class="fa-regular fa-folder-open" style="font-size: 24px; display:block; margin-bottom:6px; color:#94a3b8;"></i> دفتر الملاحظات فارغ<br>ابدأ بمحادثة وستُحفظ هنا تلقائياً.'}
           </div>
         `;
         return;
@@ -1361,22 +1376,34 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         card.className = `note-card ${note.id === currentNoteId ? 'active' : ''} ${note.pinned ? 'pinned' : ''}`;
         
         const count = Array.isArray(note.history) ? Math.floor(note.history.length / 2) : 0;
+        const iconPrefix = note.pinned 
+          ? '<i class="fa-solid fa-thumbtack" style="color: #d97706; margin-left: 5px;"></i>' 
+          : '<i class="fa-regular fa-message" style="color: #64748b; margin-left: 5px;"></i>';
         
         card.innerHTML = `
           <div class="note-card-top">
-            <div class="note-title" title="${escapeHtml(note.title)}">${note.pinned ? '📌 ' : '💬 '}${escapeHtml(note.title)}</div>
+            <div class="note-title" title="${escapeHtml(note.title)}">${iconPrefix}${escapeHtml(note.title)}</div>
             <div class="note-card-actions">
-              <button class="note-action-btn pin-btn ${note.pinned ? 'is-pinned' : ''}" title="${note.pinned ? 'إلغاء التثبيت' : 'تثبيت'}" onclick="togglePinNote(event, ${note.id})">📌</button>
-              <button class="note-action-btn" title="إعادة تسمية" onclick="renameNotePrompt(event, ${note.id})">✏️</button>
-              <button class="note-action-btn" title="تصدير" onclick="exportNoteMenu(event, ${note.id})">📥</button>
-              <button class="note-action-btn delete-btn" title="حذف" onclick="deleteNoteItem(event, ${note.id})">🗑️</button>
+              <button class="note-action-btn pin-btn ${note.pinned ? 'is-pinned' : ''}" title="${note.pinned ? 'إلغاء التثبيت' : 'تثبيت'}" onclick="togglePinNote(event, ${note.id})"><i class="fa-solid fa-thumbtack"></i></button>
+              <button class="note-action-btn" title="إعادة تسمية" onclick="renameNotePrompt(event, ${note.id})"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button class="note-action-btn" title="تصدير" onclick="exportNoteMenu(event, ${note.id})"><i class="fa-solid fa-file-export"></i></button>
+              <button class="note-action-btn delete-btn" title="حذف" onclick="deleteNoteItem(event, ${note.id})"><i class="fa-regular fa-trash-can"></i></button>
             </div>
           </div>
           <div class="note-meta">
-            <span>🕒 ${note.date || 'اليوم'}</span>
+            <span><i class="fa-regular fa-clock" style="margin-left: 3px;"></i>${note.date || 'اليوم'}</span>
             <span>${count} أسئلة وأجوبة</span>
           </div>
         `;
+
+        card.onclick = (e) => {
+          if (e.target.closest(".note-card-actions")) return;
+          loadNoteById(note.id);
+        };
+
+        container.appendChild(card);
+      });
+    }
 
         card.onclick = (e) => {
           if (e.target.closest(".note-card-actions")) return;
@@ -1446,7 +1473,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       saveActiveChatToStorage();
       renderNotesList();
 
-      setStatus("📒 معروضة", "ready");
+      setStatus("معروضة", "ready", "fa-solid fa-book-open");
       if (window.innerWidth <= 768) closeSidebarMobile();
     }
 
@@ -1482,7 +1509,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       let content = `# ${n.title}\nتاريخ: ${n.date}\nمساعد الذكاء الاصطناعي: Amro AI\n\n---\n\n`;
       n.history.forEach(m => {
-        const sender = m.role === "user" ? "👤 أنت" : "✨ Amro AI";
+        const sender = m.role === "user" ? "أنت" : "Amro AI";
         const text = m.parts?.[0]?.text || "";
         content += `### ${sender}:\n${text}\n\n`;
       });
@@ -1574,9 +1601,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const area = document.getElementById("chatMessagesArea");
       area.innerHTML = `
         <div class="welcome-card">
-          <h3><span>✨</span><span>أهلاً بك في Amro AI CHAT</span></h3>
-          <p>أنا مساعدك الذكي، جاهز للإجابة عن أسئلتك، كتابة الأكواد، وتنسيق الأفكار بكل سرعة ودقة.</p>
-          <div class="welcome-hint">💬 تفضل بكتابة استفسارك في الأسفل للبدء مباشرة.</div>
+          <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: #2563eb;"></i> <span>أهلاً بك في Amro AI CHAT</span></h3>
+          <p>أنا مساعدك الذكي المطور بواسطة المهندس <strong>عمرو الشرافي</strong>. جاهز للإجابة عن أسئلتك، كتابة الأكواد والحلول التقنية، وتنسيق الأفكار بكل سرعة ودقة.</p>
+          <div class="welcome-hint"><i class="fa-regular fa-comment-dots" style="color: #2563eb; margin-left: 4px;"></i> تفضل بكتابة استفسارك في الأسفل للبدء مباشرة.</div>
         </div>
       `;
     }
@@ -1593,12 +1620,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       adjustTextareaHeight(input);
 
       setGeneratingUI(true);
-      setStatus("يكتب الآن ✍️", "streaming");
+      setStatus("يكتب الآن...", "streaming", "fa-solid fa-pen-nib fa-bounce");
 
       const botElements = createMessageElement("bot", "");
       botElements.content.innerHTML = `
         <div class="typing-box">
-          <span>جاري الكتابة... ✍️</span>
+          <i class="fa-solid fa-pen-nib fa-bounce" style="color: #1d4ed8;"></i>
+          <span>جاري التفكير والكتابة...</span>
           <span class="typing-dots"><span></span><span></span><span></span></span>
           <span class="streaming-cursor"></span>
         </div>
@@ -1652,6 +1680,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               if (parsed.error) throw new Error(parsed.error);
               if (parsed.chunk) {
                 fullAnswer += parsed.chunk;
+                botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer) + ' <span class="streaming-cursor"></span>';
+                scrollToBottom();
               }
             } catch (jsonErr) {}
           }
@@ -1665,24 +1695,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         currentHistory.push({ role: "model", parts: [{ text: fullAnswer }] });
 
         autoSaveCurrentChatToNotes();
-        setStatus(currentNoteId ? "📒 محفوظة" : "جاهز ✨", "ready");
+        setStatus(currentNoteId ? "محفوظة" : "جاهز", "ready");
 
       } catch (err) {
         if (err.name === "AbortError") {
           if (fullAnswer) {
-            botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer) + `<div style="font-size: 11px; color: #dc2626; margin-top: 5px;">⏹️ (تم إيقاف الرد)</div>`;
+            botElements.content.innerHTML = renderMarkdownToHtml(fullAnswer) + `<div style="font-size: 11px; color: #dc2626; margin-top: 5px;"><i class="fa-solid fa-circle-stop"></i> (تم إيقاف الرد)</div>`;
             botElements.wrapper.dataset.fullText = fullAnswer;
             enhanceCodeBlocks(botElements.wrapper);
             currentHistory.push({ role: "user", parts: [{ text: question }] });
             currentHistory.push({ role: "model", parts: [{ text: fullAnswer }] });
             autoSaveCurrentChatToNotes();
           } else {
-            botElements.content.innerHTML = `<span style="color: #64748b; font-size: 11.5px;">⏹️ تم إيقاف توليد الإجابة.</span>`;
+            botElements.content.innerHTML = `<span style="color: #64748b; font-size: 11.5px;"><i class="fa-solid fa-circle-stop"></i> تم إيقاف توليد الإجابة.</span>`;
           }
-          setStatus("متوقف ⏹️", "ready");
+          setStatus("متوقف", "ready", "fa-solid fa-circle-stop");
         } else {
-          botElements.content.innerHTML = `<span style="color: #dc2626; font-weight: 700;">⚠️ عذراً: ${escapeHtml(err.message)}</span>`;
-          setStatus("خطأ ❌", "ready");
+          botElements.content.innerHTML = `<span style="color: #dc2626; font-weight: 700;"><i class="fa-solid fa-triangle-exclamation"></i> عذراً: ${escapeHtml(err.message)}</span>`;
+          setStatus("خطأ", "ready", "fa-solid fa-triangle-exclamation");
         }
       } finally {
         abortController = null;
@@ -1731,7 +1761,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             currentNoteId = parsed.currentNoteId || null;
             renderCurrentHistory();
             renderNotesList();
-            setStatus(currentNoteId ? "📒 محفوظة" : "جاهز ✨", "ready");
+            setStatus(currentNoteId ? "محفوظة" : "جاهز", "ready");
             return;
           }
         }
