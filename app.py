@@ -64,11 +64,9 @@ def get_api_key():
 # 2. نماذج الذكاء الاصطناعي وتعليمات النظام
 # ==========================================
 PRIMARY_MODELS = [
-    "gemini-3-flash-preview",
-    "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
-    "gemini-flash-lite-latest",
-    "gemini-3.8-flash"
+    "gemini-3-flash-preview",
+    "gemini-flash-lite-latest"
 ]
 
 # تعليمات نظام واضحة ومباشرة: التركيز التام على إجابة السؤال دون الترويج للمطور إلا عند السؤال الصريح عنه
@@ -1815,7 +1813,7 @@ def chat_stream():
             }
 
             try:
-                res = requests.post(url, headers=headers, json=payload, stream=True, timeout=18)
+                res = requests.post(url, headers=headers, json=payload, stream=True, timeout=8)
                 if not res.ok:
                     try:
                         err_text = res.json().get("error", {}).get("message", res.text[:200])
@@ -1903,7 +1901,7 @@ def chat_legacy():
                 url,
                 headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
                 json=payload,
-                timeout=25
+                timeout=10
             )
             if res.ok:
                 parts = res.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
