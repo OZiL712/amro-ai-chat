@@ -1763,6 +1763,11 @@ def add_security_headers(response):
 @app.route("/api")
 @app.route("/api/index.py")
 def home():
+    if request.args.get("debug"):
+        return jsonify({
+            "path": request.path,
+            "environ": {k: str(v) for k, v in request.environ.items() if "PATH" in k or "URL" in k or "VERCEL" in k or "MATCH" in k or "ROUTE" in k or "HTTP" in k}
+        })
     return render_template_string(HTML_TEMPLATE)
 
 @app.route("/debug", methods=["GET", "POST"])
